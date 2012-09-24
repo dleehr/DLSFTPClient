@@ -1,0 +1,418 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0474E4C5AC8E4E7DAB487BD1 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EE97EF53662B46BE91BFFFA5 /* libPods.a */; };
+		3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F02E15D699FE0078A7E5 /* UIKit.framework */; };
+		3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
+		3734F03315D699FE0078A7E5 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03215D699FE0078A7E5 /* CoreGraphics.framework */; };
+		3734F03915D699FE0078A7E5 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3734F03715D699FE0078A7E5 /* InfoPlist.strings */; };
+		3734F03B15D699FE0078A7E5 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F03A15D699FE0078A7E5 /* main.m */; };
+		3734F03F15D699FE0078A7E5 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F03E15D699FE0078A7E5 /* AppDelegate.m */; };
+		3734F04D15D69AE30078A7E5 /* DLSFTPConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F04C15D69AE30078A7E5 /* DLSFTPConnection.m */; };
+		3734F05115D69B190078A7E5 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04E15D69B190078A7E5 /* libcrypto.a */; };
+		3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04F15D69B190078A7E5 /* libssh2.a */; };
+		3734F05315D69B190078A7E5 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F05015D69B190078A7E5 /* libssl.a */; };
+		3738FE3E15D704E900D4BE07 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3738FE3D15D704E900D4BE07 /* libz.dylib */; };
+		3738FE4215D72B9600D4BE07 /* DLSFTPFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */; };
+		3738FE4915D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */; };
+		375D47F615F0402300BB8B79 /* FileUploadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F515F0402300BB8B79 /* FileUploadViewController.m */; };
+		375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */; };
+		379B78E715E86DA5007B8DAB /* LocalFilesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */; };
+		37A5B1BA15F5119A00B1577E /* FileOperationsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */; };
+		37D6580E160EA1870041099A /* DLDocumentsDirectoryPath.m in Sources */ = {isa = PBXBuildFile; fileRef = 37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */; };
+		37D65811160EA1F50041099A /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 37D65810160EA1F50041099A /* Default-568h@2x.png */; };
+		37F90D2015DC98F1006F8FB7 /* LoginViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */; };
+		37F90D2415E13FB6006F8FB7 /* FileBrowserViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2315E13FB6006F8FB7 /* FileBrowserViewController.m */; };
+		37F90D2715E14D87006F8FB7 /* DLFileSizeFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */; };
+		37F90D2A15E1B00B006F8FB7 /* FileDownloadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2915E1B00B006F8FB7 /* FileDownloadViewController.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DLSFTPClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3734F02E15D699FE0078A7E5 /* UIKit.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		3734F03015D699FE0078A7E5 /* Foundation.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		3734F03215D699FE0078A7E5 /* CoreGraphics.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		3734F03615D699FE0078A7E5 /* DLSFTPClient-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DLSFTPClient-Info.plist"; sourceTree = "<group>"; };
+		3734F03815D699FE0078A7E5 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		3734F03A15D699FE0078A7E5 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		3734F03C15D699FE0078A7E5 /* DLSFTPClient-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DLSFTPClient-Prefix.pch"; sourceTree = "<group>"; };
+		3734F03D15D699FE0078A7E5 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		3734F03E15D699FE0078A7E5 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		3734F04B15D69AE30078A7E5 /* DLSFTPConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPConnection.h; sourceTree = "<group>"; };
+		3734F04C15D69AE30078A7E5 /* DLSFTPConnection.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPConnection.m; sourceTree = "<group>"; };
+		3734F04E15D69B190078A7E5 /* libcrypto.a */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = archive.ar; name = libcrypto.a; path = "../libssh2-for-iOS/lib/libcrypto.a"; sourceTree = "<group>"; };
+		3734F04F15D69B190078A7E5 /* libssh2.a */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = archive.ar; name = libssh2.a; path = "../libssh2-for-iOS/lib/libssh2.a"; sourceTree = "<group>"; };
+		3734F05015D69B190078A7E5 /* libssl.a */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = archive.ar; name = libssl.a; path = "../libssh2-for-iOS/lib/libssl.a"; sourceTree = "<group>"; };
+		3738FE3D15D704E900D4BE07 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
+		3738FE4015D72B9600D4BE07 /* DLSFTPFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPFile.h; sourceTree = "<group>"; };
+		3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPFile.m; sourceTree = "<group>"; };
+		3738FE4715D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+SFTPFileAttributes.h"; sourceTree = "<group>"; };
+		3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+SFTPFileAttributes.m"; sourceTree = "<group>"; };
+		375D47F415F0402300BB8B79 /* FileUploadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileUploadViewController.h; sourceTree = "<group>"; };
+		375D47F515F0402300BB8B79 /* FileUploadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileUploadViewController.m; sourceTree = "<group>"; };
+		375D47F815F1939E00BB8B79 /* UploadFilePickerViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UploadFilePickerViewController.h; sourceTree = "<group>"; };
+		375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = UploadFilePickerViewController.m; sourceTree = "<group>"; };
+		379B78E515E86DA5007B8DAB /* LocalFilesViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocalFilesViewController.h; sourceTree = "<group>"; };
+		379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LocalFilesViewController.m; sourceTree = "<group>"; };
+		37A5B1B815F5119A00B1577E /* FileOperationsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileOperationsViewController.h; sourceTree = "<group>"; };
+		37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileOperationsViewController.m; sourceTree = "<group>"; };
+		37D6580C160EA1860041099A /* DLDocumentsDirectoryPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLDocumentsDirectoryPath.h; sourceTree = "<group>"; };
+		37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLDocumentsDirectoryPath.m; sourceTree = "<group>"; };
+		37D65810160EA1F50041099A /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		37F90D1E15DC98F1006F8FB7 /* LoginViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoginViewController.h; sourceTree = "<group>"; };
+		37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoginViewController.m; sourceTree = "<group>"; };
+		37F90D2215E13FB6006F8FB7 /* FileBrowserViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileBrowserViewController.h; sourceTree = "<group>"; };
+		37F90D2315E13FB6006F8FB7 /* FileBrowserViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileBrowserViewController.m; sourceTree = "<group>"; };
+		37F90D2515E14D87006F8FB7 /* DLFileSizeFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLFileSizeFormatter.h; sourceTree = "<group>"; };
+		37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLFileSizeFormatter.m; sourceTree = "<group>"; };
+		37F90D2815E1B00B006F8FB7 /* FileDownloadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileDownloadViewController.h; sourceTree = "<group>"; };
+		37F90D2915E1B00B006F8FB7 /* FileDownloadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileDownloadViewController.m; sourceTree = "<group>"; };
+		EE97EF53662B46BE91BFFFA5 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE29A33F836540A7A0A6CFAC /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3734F02715D699FE0078A7E5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3738FE3E15D704E900D4BE07 /* libz.dylib in Frameworks */,
+				3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */,
+				3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */,
+				3734F03315D699FE0078A7E5 /* CoreGraphics.framework in Frameworks */,
+				3734F05115D69B190078A7E5 /* libcrypto.a in Frameworks */,
+				3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */,
+				3734F05315D69B190078A7E5 /* libssl.a in Frameworks */,
+				0474E4C5AC8E4E7DAB487BD1 /* libPods.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3734F01F15D699FE0078A7E5 = {
+			isa = PBXGroup;
+			children = (
+				37D65810160EA1F50041099A /* Default-568h@2x.png */,
+				3734F03515D699FE0078A7E5 /* Supporting Files */,
+				3734F04A15D69A800078A7E5 /* DemoApp */,
+				3734F03415D699FE0078A7E5 /* Classes */,
+				3734F02D15D699FE0078A7E5 /* Frameworks */,
+				3734F02B15D699FE0078A7E5 /* Products */,
+				FE29A33F836540A7A0A6CFAC /* Pods.xcconfig */,
+			);
+			sourceTree = "<group>";
+		};
+		3734F02B15D699FE0078A7E5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3734F02D15D699FE0078A7E5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3738FE3D15D704E900D4BE07 /* libz.dylib */,
+				3734F04E15D69B190078A7E5 /* libcrypto.a */,
+				3734F04F15D69B190078A7E5 /* libssh2.a */,
+				3734F05015D69B190078A7E5 /* libssl.a */,
+				3734F02E15D699FE0078A7E5 /* UIKit.framework */,
+				3734F03015D699FE0078A7E5 /* Foundation.framework */,
+				3734F03215D699FE0078A7E5 /* CoreGraphics.framework */,
+				EE97EF53662B46BE91BFFFA5 /* libPods.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3734F03415D699FE0078A7E5 /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				3734F04B15D69AE30078A7E5 /* DLSFTPConnection.h */,
+				3734F04C15D69AE30078A7E5 /* DLSFTPConnection.m */,
+				3738FE4015D72B9600D4BE07 /* DLSFTPFile.h */,
+				3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */,
+				3738FE4715D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.h */,
+				3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */,
+			);
+			name = Classes;
+			path = DLSFTPClient/Classes;
+			sourceTree = "<group>";
+		};
+		3734F03515D699FE0078A7E5 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				3734F03615D699FE0078A7E5 /* DLSFTPClient-Info.plist */,
+				3734F03715D699FE0078A7E5 /* InfoPlist.strings */,
+				3734F03A15D699FE0078A7E5 /* main.m */,
+				3734F03C15D699FE0078A7E5 /* DLSFTPClient-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			path = DLSFTPClient;
+			sourceTree = "<group>";
+		};
+		3734F04A15D69A800078A7E5 /* DemoApp */ = {
+			isa = PBXGroup;
+			children = (
+				3734F03D15D699FE0078A7E5 /* AppDelegate.h */,
+				3734F03E15D699FE0078A7E5 /* AppDelegate.m */,
+				37F90D1E15DC98F1006F8FB7 /* LoginViewController.h */,
+				37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */,
+				37F90D2215E13FB6006F8FB7 /* FileBrowserViewController.h */,
+				37F90D2315E13FB6006F8FB7 /* FileBrowserViewController.m */,
+				37F90D2515E14D87006F8FB7 /* DLFileSizeFormatter.h */,
+				37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */,
+				37F90D2815E1B00B006F8FB7 /* FileDownloadViewController.h */,
+				37F90D2915E1B00B006F8FB7 /* FileDownloadViewController.m */,
+				379B78E515E86DA5007B8DAB /* LocalFilesViewController.h */,
+				379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */,
+				375D47F415F0402300BB8B79 /* FileUploadViewController.h */,
+				375D47F515F0402300BB8B79 /* FileUploadViewController.m */,
+				375D47F815F1939E00BB8B79 /* UploadFilePickerViewController.h */,
+				375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */,
+				37A5B1B815F5119A00B1577E /* FileOperationsViewController.h */,
+				37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */,
+				37D6580C160EA1860041099A /* DLDocumentsDirectoryPath.h */,
+				37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */,
+			);
+			name = DemoApp;
+			path = DLSFTPClient/DemoApp;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3734F02915D699FE0078A7E5 /* DLSFTPClient */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */;
+			buildPhases = (
+				3734F02615D699FE0078A7E5 /* Sources */,
+				3734F02715D699FE0078A7E5 /* Frameworks */,
+				3734F02815D699FE0078A7E5 /* Resources */,
+				B39652DC6451464A942D0A1A /* Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DLSFTPClient;
+			productName = DLSSHWrapper;
+			productReference = 3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3734F02115D699FE0078A7E5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0440;
+				ORGANIZATIONNAME = "Dan Leehr";
+			};
+			buildConfigurationList = 3734F02415D699FE0078A7E5 /* Build configuration list for PBXProject "DLSFTPClient" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 3734F01F15D699FE0078A7E5;
+			productRefGroup = 3734F02B15D699FE0078A7E5 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3734F02915D699FE0078A7E5 /* DLSFTPClient */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3734F02815D699FE0078A7E5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3734F03915D699FE0078A7E5 /* InfoPlist.strings in Resources */,
+				37D65811160EA1F50041099A /* Default-568h@2x.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		B39652DC6451464A942D0A1A /* Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Pods-resources.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3734F02615D699FE0078A7E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3734F03B15D699FE0078A7E5 /* main.m in Sources */,
+				3734F03F15D699FE0078A7E5 /* AppDelegate.m in Sources */,
+				3734F04D15D69AE30078A7E5 /* DLSFTPConnection.m in Sources */,
+				3738FE4215D72B9600D4BE07 /* DLSFTPFile.m in Sources */,
+				3738FE4915D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m in Sources */,
+				37F90D2015DC98F1006F8FB7 /* LoginViewController.m in Sources */,
+				37F90D2415E13FB6006F8FB7 /* FileBrowserViewController.m in Sources */,
+				37F90D2715E14D87006F8FB7 /* DLFileSizeFormatter.m in Sources */,
+				37F90D2A15E1B00B006F8FB7 /* FileDownloadViewController.m in Sources */,
+				379B78E715E86DA5007B8DAB /* LocalFilesViewController.m in Sources */,
+				375D47F615F0402300BB8B79 /* FileUploadViewController.m in Sources */,
+				375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */,
+				37A5B1BA15F5119A00B1577E /* FileOperationsViewController.m in Sources */,
+				37D6580E160EA1870041099A /* DLDocumentsDirectoryPath.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		3734F03715D699FE0078A7E5 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				3734F03815D699FE0078A7E5 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		3734F04015D699FE0078A7E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = armv7;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/../libssh2-for-iOS/include\"/**";
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3734F04115D699FE0078A7E5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = armv7;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/../libssh2-for-iOS/include\"/**";
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		3734F04315D699FE0078A7E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FE29A33F836540A7A0A6CFAC /* Pods.xcconfig */;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				HEADER_SEARCH_PATHS = (
+					"${PODS_HEADERS_SEARCH_PATHS}",
+					"\"$(SRCROOT)/../libssh2-for-iOS/include\"/**",
+				);
+				INFOPLIST_FILE = "DLSFTPClient/DLSFTPClient-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				PRODUCT_NAME = DLSFTPClient;
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		3734F04415D699FE0078A7E5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FE29A33F836540A7A0A6CFAC /* Pods.xcconfig */;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				HEADER_SEARCH_PATHS = (
+					"${PODS_HEADERS_SEARCH_PATHS}",
+					"\"$(SRCROOT)/../libssh2-for-iOS/include\"/**",
+				);
+				INFOPLIST_FILE = "DLSFTPClient/DLSFTPClient-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				PRODUCT_NAME = DLSFTPClient;
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3734F02415D699FE0078A7E5 /* Build configuration list for PBXProject "DLSFTPClient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3734F04015D699FE0078A7E5 /* Debug */,
+				3734F04115D699FE0078A7E5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3734F04315D699FE0078A7E5 /* Debug */,
+				3734F04415D699FE0078A7E5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3734F02115D699FE0078A7E5 /* Project object */;
+}
