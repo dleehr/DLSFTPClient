@@ -7,6 +7,8 @@
 //
 
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include "libssh2.h"
 #include "libssh2_config.h"
 #include "libssh2_sftp.h"
@@ -25,14 +27,10 @@ static const size_t cBufferSize = 8192;
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
 #import "NSDictionary+SFTPFileAttributes.h"
-#import "GCDAsyncSocket.h"
 
-@interface DLSFTPConnection () <GCDAsyncSocketDelegate> {
-    NSString *_hostname;
-    NSUInteger _port;
+@interface DLSFTPConnection () {
 
-    // CocoaAsyncSocket
-    GCDAsyncSocket *_socket;
+    // socket queue
     dispatch_queue_t _socketQueue;
 
     // file IO
@@ -43,7 +41,10 @@ static const size_t cBufferSize = 8192;
 @property (nonatomic, copy) DLSFTPClientFailureBlock queuedFailureBlock;
 @property (nonatomic, copy) NSString *username;
 @property (nonatomic, copy) NSString *password;
+@property (nonatomic, copy) NSString *hostname;
+@property (nonatomic, assign) NSUInteger port;
 
+@property (nonatomic, assign) int socket;
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
@@ -80,11 +81,11 @@ static const size_t cBufferSize = 8192;
               password:(NSString *)password {
     self = [super init];
     if (self) {
-        _hostname = [hostname copy];
-        _port = cDefaultSSHPort;
-        _port = port;
-        _username = [username copy];
-        _password = [password copy];
+        self.hostname = hostname;
+        self.port = port;
+        self.username = username;
+        self.password = password;
+        self.socket = 0;
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socketqueue", DISPATCH_QUEUE_SERIAL);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
         _isCancelled = NO;
@@ -93,14 +94,9 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)dealloc {
-    if (_sftp) {
-        libssh2_sftp_shutdown(_sftp);
-        _sftp = NULL;
-    }
-    if (_session) {
-        libssh2_session_free(_session);
-        _session = NULL;
-    }
+    self.sftp = NULL;
+    self.session = NULL;
+    [self disconnectSocket];
     dispatch_release(_socketQueue);
     dispatch_release(_fileIOQueue);
 }
@@ -129,9 +125,8 @@ static const size_t cBufferSize = 8192;
 - (void)setSftp:(LIBSSH2_SFTP *)sftp {
     if (_sftp) {
         while (libssh2_sftp_shutdown(_sftp) == LIBSSH2SFTP_EAGAIN) {
-            waitsocket([_socket socket4FD], _session);
+            waitsocket(self.socket, _session);
         }
-        libssh2_sftp_shutdown(_sftp);
     }
     _sftp = sftp;
 }
@@ -142,19 +137,25 @@ static const size_t cBufferSize = 8192;
         // initialize sftp in non-blocking
         while (   (_sftp = libssh2_sftp_init(session)) == NULL
                && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)) {
-            waitsocket([_socket socketFD], session);
+            waitsocket(self.socket, session);
         }
     }
     return _sftp;
 }
 
-#pragma mark - GCDAsyncSocketDelegate
+#pragma mark - Private
 
-- (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port {
+- (void)disconnectSocket {
+    close(self.socket);
+    self.socket = 0;
+}
+
+// no longer need to queue these blocks
+- (void)startSFTPSession {
     NSLog(@"Did connect");
     if (self.session == NULL) {
         // close the socket
-        [sock disconnect];
+        [self disconnectSocket];
         // unable to initialize session
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorUnableToInitializeSession
@@ -171,7 +172,7 @@ static const size_t cBufferSize = 8192;
     // valid session, get the socket descriptor
     // must be called from socket's queue
     dispatch_async(_socketQueue, ^{
-        int socketFD = [sock socketFD];
+        int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
         int result;
         while ((result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)) {
@@ -181,7 +182,7 @@ static const size_t cBufferSize = 8192;
             // handshake failed
 
             // free the session and close the socket
-            [sock disconnect];
+            [self disconnectSocket];
 
             NSString *errorDescription = [NSString stringWithFormat:@"Handshake failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -251,26 +252,11 @@ static const size_t cBufferSize = 8192;
 
 }
 
-- (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)error {
-    NSLog(@"did disconnect");
-    if (error) {
-        if (self.queuedFailureBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self.queuedFailureBlock(error);
-                self.queuedFailureBlock = nil;
-                self.queuedSuccessBlock = nil;
-            });
-        }
-    }
-}
-
-// need timeout messages
-
 #pragma mark Public
 
 // just if the socket is connected
 - (BOOL)isConnected {
-    return [_socket isConnected];
+    return self.socket != 0;
 }
 
 - (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
@@ -283,10 +269,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-    } else if (   ([_hostname length] == 0)
-               || ([_username length] == 0)
-               || ([_password length] == 0)
-               || (_port == 0)) {
+    } else if (   ([self.hostname length] == 0)
+               || ([self.username length] == 0)
+               || ([self.password length] == 0)
+               || (self.port == 0)) {
             // don't have valid arguments
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorInvalidArguments
@@ -294,26 +280,50 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
+    } else if(self.socket) {
+        // already have a socket
+        // last connection not yet connected
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorAlreadyConnected
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Already connected" }];
+        if (failureBlock) {
+            failureBlock(error);
+        }
     } else {
-        // should be ready to go
         self.queuedSuccessBlock = successBlock;
         self.queuedFailureBlock = failureBlock;
-        
-        // may not need CocoaAsyncSocket here.
-        _socket = [[GCDAsyncSocket alloc] initWithDelegate:self
-                                             delegateQueue:dispatch_get_main_queue()
-                                               socketQueue:_socketQueue];
 
-        NSError __autoreleasing *error = nil;
-        if([_socket connectToHost:_hostname onPort:_port withTimeout:cDefaultConnectionTimeout error:&error] == NO) {
-            // early error
-            if (self.queuedFailureBlock) {
-                self.queuedFailureBlock(error);
+        __weak DLSFTPConnection *weakSelf = self;
+
+        // initialize and connect the socket on the socket queue
+        dispatch_async(_socketQueue, ^{
+            unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
+            weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
+            struct sockaddr_in soin;
+            soin.sin_family = AF_INET;
+            soin.sin_port = htons(weakSelf.port);
+            soin.sin_addr.s_addr = hostaddr;
+            // how to do timeouts?
+            int result = connect(weakSelf.socket, (struct sockaddr*)(&soin),sizeof(struct sockaddr_in));
+            if (result == 0) {
+                // connected socket, start the SFTP session
+                [weakSelf startSFTPSession];
+            } else {
+                NSString *errorDescription = [NSString stringWithFormat:@"Unable to connect: socket error: %d", result];
+                NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                     code:eSFTPClientErrorUnableToConnect
+                                                 userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
+                // early error
+                if (weakSelf.queuedFailureBlock) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        weakSelf.queuedFailureBlock(error);
+                    });
+                }
+                // clear out queued blocks
+                weakSelf.queuedSuccessBlock = nil;
+                weakSelf.queuedFailureBlock = nil;
             }
-            // clear out queued blocks
-            self.queuedSuccessBlock = nil;
-            self.queuedFailureBlock = nil;
-        }
+        });
     }
 }
 
@@ -321,7 +331,7 @@ static const size_t cBufferSize = 8192;
     dispatch_async(_socketQueue, ^{
         self.sftp = NULL;
         self.session = NULL;
-        [_socket disconnect];
+        [self disconnectSocket];
     });
 }
 
@@ -353,7 +363,7 @@ static const size_t cBufferSize = 8192;
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
 
         if (sftp == NULL) {
             // unable to initialize sftp
@@ -496,7 +506,7 @@ static const size_t cBufferSize = 8192;
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
 
         if (sftp == NULL) {
             // unable to initialize sftp
@@ -600,7 +610,7 @@ static const size_t cBufferSize = 8192;
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
 
         if (sftp == NULL) {
             // unable to initialize sftp
@@ -699,7 +709,7 @@ static const size_t cBufferSize = 8192;
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
 
         if (sftp == NULL) {
             // unable to initialize sftp
@@ -785,7 +795,7 @@ static const size_t cBufferSize = 8192;
 
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
         if (sftp == NULL) {
             // unable to initialize sftp
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -1047,7 +1057,7 @@ static const size_t cBufferSize = 8192;
 
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = [_socket socketFD];
+        int socketFD = self.socket;
         if (sftp == NULL) {
             // unable to initialize sftp
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
