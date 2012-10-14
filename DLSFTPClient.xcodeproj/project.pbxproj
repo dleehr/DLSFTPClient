@@ -190,7 +190,6 @@
 				3734F02615D699FE0078A7E5 /* Sources */,
 				3734F02715D699FE0078A7E5 /* Frameworks */,
 				3734F02815D699FE0078A7E5 /* Resources */,
-				B39652DC6451464A942D0A1A /* Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -238,23 +237,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		B39652DC6451464A942D0A1A /* Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Pods-resources.sh\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3734F02615D699FE0078A7E5 /* Sources */ = {
