@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0474E4C5AC8E4E7DAB487BD1 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EE97EF53662B46BE91BFFFA5 /* libPods.a */; };
 		3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F02E15D699FE0078A7E5 /* UIKit.framework */; };
 		3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
 		3734F03315D699FE0078A7E5 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03215D699FE0078A7E5 /* CoreGraphics.framework */; };
@@ -73,7 +72,6 @@
 		37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLFileSizeFormatter.m; sourceTree = "<group>"; };
 		37F90D2815E1B00B006F8FB7 /* FileDownloadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileDownloadViewController.h; sourceTree = "<group>"; };
 		37F90D2915E1B00B006F8FB7 /* FileDownloadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileDownloadViewController.m; sourceTree = "<group>"; };
-		EE97EF53662B46BE91BFFFA5 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE29A33F836540A7A0A6CFAC /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -89,7 +87,6 @@
 				3734F05115D69B190078A7E5 /* libcrypto.a in Frameworks */,
 				3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */,
 				3734F05315D69B190078A7E5 /* libssl.a in Frameworks */,
-				0474E4C5AC8E4E7DAB487BD1 /* libPods.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,7 +124,6 @@
 				3734F02E15D699FE0078A7E5 /* UIKit.framework */,
 				3734F03015D699FE0078A7E5 /* Foundation.framework */,
 				3734F03215D699FE0078A7E5 /* CoreGraphics.framework */,
-				EE97EF53662B46BE91BFFFA5 /* libPods.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
