@@ -97,8 +97,6 @@ static const size_t cBufferSize = 8192;
     self.sftp = NULL;
     self.session = NULL;
     [self disconnectSocket];
-    dispatch_release(_socketQueue);
-    dispatch_release(_fileIOQueue);
 }
 
 - (void)setSession:(LIBSSH2_SESSION *)session {
@@ -912,13 +910,11 @@ static const size_t cBufferSize = 8192;
                                           printf("error in dispatch_io_write %d\n", error);
                                       }
                                   });
-                dispatch_release(data);
             }
         } while (shouldContinue && (bytesRead > 0));
 
         NSDate *finishTime = [NSDate date];
         dispatch_source_cancel(progressSource);
-        dispatch_release(progressSource);
         dispatch_io_close(channel, 0);
 
         if (shouldContinue == NO) {
@@ -1242,7 +1238,6 @@ static const size_t cBufferSize = 8192;
             // dispatch this block on file io queue
             dispatch_block_t channel_cleanup_block = ^{
                 dispatch_source_cancel(progressSource);
-                dispatch_release(progressSource);
                 dispatch_io_close(channel, DISPATCH_IO_STOP);
                 dispatch_async(_socketQueue, read_finished_block);
             }; // end channel cleanup block
@@ -1272,10 +1267,9 @@ static const size_t cBufferSize = 8192;
                                          // update shouldcontinue into the waitsocket file desctiptor
                                          waitsocket(socketFD, session);
                                      }
+                                     mapped_buffered_chunk_subrange = NULL;
                                      
                                      offset += bytes_read;
-                                     dispatch_release(mapped_buffered_chunk_subrange);
-                                     dispatch_release(buffered_chunk_subrange);
 
                                      if (sftp_result > 0) {
                                          dispatch_source_merge_data(progressSource, sftp_result);

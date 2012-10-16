@@ -7,19 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		372F7BE5162CDDE60038F852 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
+		372F7BF0162CDE1D0038F852 /* DLSFTPConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F04C15D69AE30078A7E5 /* DLSFTPConnection.m */; };
+		372F7BF1162CDE230038F852 /* DLSFTPFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */; };
+		372F7BF2162CDE290038F852 /* NSDictionary+SFTPFileAttributes.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */; };
+		372F7BF4162CE0B60038F852 /* libDLSFTPClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */; };
 		3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F02E15D699FE0078A7E5 /* UIKit.framework */; };
 		3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
 		3734F03315D699FE0078A7E5 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03215D699FE0078A7E5 /* CoreGraphics.framework */; };
 		3734F03915D699FE0078A7E5 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3734F03715D699FE0078A7E5 /* InfoPlist.strings */; };
 		3734F03B15D699FE0078A7E5 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F03A15D699FE0078A7E5 /* main.m */; };
 		3734F03F15D699FE0078A7E5 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F03E15D699FE0078A7E5 /* AppDelegate.m */; };
-		3734F04D15D69AE30078A7E5 /* DLSFTPConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = 3734F04C15D69AE30078A7E5 /* DLSFTPConnection.m */; };
 		3734F05115D69B190078A7E5 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04E15D69B190078A7E5 /* libcrypto.a */; };
 		3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04F15D69B190078A7E5 /* libssh2.a */; };
 		3734F05315D69B190078A7E5 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F05015D69B190078A7E5 /* libssl.a */; };
 		3738FE3E15D704E900D4BE07 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3738FE3D15D704E900D4BE07 /* libz.dylib */; };
-		3738FE4215D72B9600D4BE07 /* DLSFTPFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */; };
-		3738FE4915D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */; };
 		375D47F615F0402300BB8B79 /* FileUploadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F515F0402300BB8B79 /* FileUploadViewController.m */; };
 		375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */; };
 		379B78E715E86DA5007B8DAB /* LocalFilesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */; };
@@ -32,7 +34,20 @@
 		37F90D2A15E1B00B006F8FB7 /* FileDownloadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2915E1B00B006F8FB7 /* FileDownloadViewController.m */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		372F7BE2162CDDE60038F852 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/${PRODUCT_NAME}";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libDLSFTPClient.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DLSFTPClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3734F02E15D699FE0078A7E5 /* UIKit.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		3734F03015D699FE0078A7E5 /* Foundation.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -75,10 +90,19 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		372F7BE1162CDDE60038F852 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				372F7BE5162CDDE60038F852 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3734F02715D699FE0078A7E5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				372F7BF4162CE0B60038F852 /* libDLSFTPClient.a in Frameworks */,
 				3738FE3E15D704E900D4BE07 /* libz.dylib in Frameworks */,
 				3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */,
 				3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */,
@@ -108,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */,
+				372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -183,6 +208,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		372F7BE3162CDDE60038F852 /* DLSFTPClient */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 372F7BED162CDDE60038F852 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */;
+			buildPhases = (
+				372F7BE0162CDDE60038F852 /* Sources */,
+				372F7BE1162CDDE60038F852 /* Frameworks */,
+				372F7BE2162CDDE60038F852 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DLSFTPClient;
+			productName = SFTPClient;
+			productReference = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 		3734F02915D699FE0078A7E5 /* DLSFTPClientDemo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClientDemo" */;
@@ -222,6 +264,7 @@
 			projectRoot = "";
 			targets = (
 				3734F02915D699FE0078A7E5 /* DLSFTPClientDemo */,
+				372F7BE3162CDDE60038F852 /* DLSFTPClient */,
 			);
 		};
 /* End PBXProject section */
@@ -239,15 +282,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		372F7BE0162CDDE60038F852 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				372F7BF0162CDE1D0038F852 /* DLSFTPConnection.m in Sources */,
+				372F7BF1162CDE230038F852 /* DLSFTPFile.m in Sources */,
+				372F7BF2162CDE290038F852 /* NSDictionary+SFTPFileAttributes.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3734F02615D699FE0078A7E5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				3734F03B15D699FE0078A7E5 /* main.m in Sources */,
 				3734F03F15D699FE0078A7E5 /* AppDelegate.m in Sources */,
-				3734F04D15D69AE30078A7E5 /* DLSFTPConnection.m in Sources */,
-				3738FE4215D72B9600D4BE07 /* DLSFTPFile.m in Sources */,
-				3738FE4915D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m in Sources */,
 				37F90D2015DC98F1006F8FB7 /* LoginViewController.m in Sources */,
 				37F90D2415E13FB6006F8FB7 /* FileBrowserViewController.m in Sources */,
 				37F90D2715E14D87006F8FB7 /* DLFileSizeFormatter.m in Sources */,
@@ -274,6 +324,37 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		372F7BEE162CDDE60038F852 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				DSTROOT = /tmp/SFTPClient.dst;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		372F7BEF162CDDE60038F852 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				DSTROOT = /tmp/SFTPClient.dst;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
 		3734F04015D699FE0078A7E5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -341,6 +422,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
 				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = DLSFTPClient;
 				WRAPPER_EXTENSION = app;
 			};
@@ -360,6 +442,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
 				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = DLSFTPClient;
 				WRAPPER_EXTENSION = app;
 			};
@@ -368,6 +451,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		372F7BED162CDDE60038F852 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				372F7BEE162CDDE60038F852 /* Debug */,
+				372F7BEF162CDDE60038F852 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		3734F02415D699FE0078A7E5 /* Build configuration list for PBXProject "DLSFTPClient" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
