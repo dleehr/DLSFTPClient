@@ -183,9 +183,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		3734F02915D699FE0078A7E5 /* DLSFTPClient */ = {
+		3734F02915D699FE0078A7E5 /* DLSFTPClientDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */;
+			buildConfigurationList = 3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClientDemo" */;
 			buildPhases = (
 				3734F02615D699FE0078A7E5 /* Sources */,
 				3734F02715D699FE0078A7E5 /* Frameworks */,
@@ -195,7 +195,7 @@
 			);
 			dependencies = (
 			);
-			name = DLSFTPClient;
+			name = DLSFTPClientDemo;
 			productName = DLSSHWrapper;
 			productReference = 3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */;
 			productType = "com.apple.product-type.application";
@@ -221,7 +221,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				3734F02915D699FE0078A7E5 /* DLSFTPClient */,
+				3734F02915D699FE0078A7E5 /* DLSFTPClientDemo */,
 			);
 		};
 /* End PBXProject section */
@@ -377,7 +377,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClient" */ = {
+		3734F04215D699FE0078A7E5 /* Build configuration list for PBXNativeTarget "DLSFTPClientDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3734F04315D699FE0078A7E5 /* Debug */,
