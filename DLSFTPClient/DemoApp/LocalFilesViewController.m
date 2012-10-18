@@ -137,7 +137,7 @@
                                                                          style:UIBarButtonItemStyleBordered
                                                                         target:self
                                                                         action:@selector(deleteTapped:)];
-        deleteButton.tintColor = [UIColor redColor];
+        deleteButton.tintColor = [UIColor colorWithRed:0.8f green:0.0f blue:0.0f alpha:1.0f];
         deleteButton.width = 120.0f;
         UIBarButtonItem *selectAllButton = [[UIBarButtonItem alloc] initWithTitle:@"Select All"
                                                                             style:UIBarButtonItemStyleBordered
