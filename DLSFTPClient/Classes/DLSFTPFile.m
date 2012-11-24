@@ -33,4 +33,24 @@
 - (NSString *)filename {
     return [self.path lastPathComponent];
 }
+
+- (BOOL)isEqual:(id)object {
+    if (object == self) {
+        return YES;
+    } else if ([object isKindOfClass:[DLSFTPFile class]]) {
+        DLSFTPFile *otherFile = (DLSFTPFile *)object;
+        return [self.path isEqualToString:otherFile.path];
+    } else {
+        return NO;
+    }
+}
+
+- (NSUInteger)hash {
+    NSUInteger prime = 31;
+    NSUInteger result = 1;
+    result = prime * result + [self.attributes hash];
+    result = prime * result + [self.path hash];
+    return result;
+}
+
 @end
