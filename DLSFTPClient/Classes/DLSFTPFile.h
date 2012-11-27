@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-@interface DLSFTPFile : NSObject
+@interface DLSFTPFile : NSObject <NSCoding>
 
 - (id)initWithPath:(NSString *)path
         attributes:(NSDictionary *)attributes;

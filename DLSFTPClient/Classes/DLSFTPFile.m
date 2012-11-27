@@ -6,6 +6,9 @@
 //  Copyright (c) 2012 Dan Leehr. All rights reserved.
 //
 
+NSString * const DLSFTPFilePathKey = @"DLSFTPFilePath";
+NSString * const DLSFTPFileAttributesKey = @"DLSFTPFileAttributes";
+
 #import "DLSFTPFile.h"
 
 @implementation DLSFTPFile
@@ -53,4 +56,20 @@
     return result;
 }
 
-@end
+#pragma mark - NSCoding
+
+- (id)initWithCoder:(NSCoder *)aDecoder {
+    self = [super init];
+    if (self) {
+        _path = [[aDecoder decodeObjectForKey:DLSFTPFilePathKey] copy];
+        _attributes = [[aDecoder decodeObjectForKey:DLSFTPFileAttributesKey] copy];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder {
+    [aCoder encodeObject:self.path forKey:DLSFTPFilePathKey];
+    [aCoder encodeObject:self.attributes forKey:DLSFTPFileAttributesKey];
+}
+
+@end;
