@@ -32,6 +32,7 @@ typedef enum {
     eSFTPClientErrorUnableToReadDirectory,
     eSFTPClientErrorUnableToReadFile,
     eSFTPClientErrorUnableToStatFile,
+    eSFTPClientErrorUnableToCreateChannel,
     eSFTPClientErrorCancelledByUser,
     eSFTPClientErrorUnableToOpenLocalFileForReading,
     eSFTPClientErrorUnableToWriteFile,

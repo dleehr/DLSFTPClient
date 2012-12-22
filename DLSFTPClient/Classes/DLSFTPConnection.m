@@ -855,20 +855,45 @@ static const size_t cBufferSize = 8192;
             return;
         }
 
+        dispatch_group_t downloadGroup = dispatch_group_create();
+
+        // join the group from the socket queue
+        dispatch_group_enter(downloadGroup);
+        // join the group from the fileIOQueue
+        dispatch_async(_fileIOQueue, ^{
+            dispatch_group_enter(downloadGroup);
+        });
+
+        /* Begin dispatch io */
+
         dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
                                                              , [localPath UTF8String]
                                                              , (O_WRONLY | O_CREAT | O_TRUNC)
                                                              , 0
                                                              , _fileIOQueue
                                                              , ^(int error) {
-                                                                 // cleanup handler?
+                                                                 // when the channel is cleaned up, leave the group
+                                                                 dispatch_group_leave(downloadGroup);
                                                                  if (error) {
                                                                      printf("error in dispatch io: %d\n", error);
                                                                  }
                                                              });
+        if (channel == NULL) {
+            // Error creating the channel
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to create a chhannel for writing to %@", localPath];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToCreateChannel
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription } ];
+            if (failureBlock) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    failureBlock(error);
+                });
+            }
+            return;
+        }
 
         // dispatch source to invoke progress handler block
-        __block BOOL shouldContinue = YES;
+        __block BOOL shouldContinue = YES; // user has not cancelled
 
         dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());
         __block unsigned long long bytesReceived = 0ull;
@@ -888,34 +913,43 @@ static const size_t cBufferSize = 8192;
         NSDate *startTime = [NSDate date];
 
         do {
+            // first read data from libssh2
             bytesRead = 0;
             while (   shouldContinue
                    && (bytesRead = libssh2_sftp_read(handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
-                    // update shouldcontinue into the waitsocket file desctiptor
-                    waitsocket(socketFD, session);
+                // Consider making shouldContinue a file descriptor source so we can monitor it like we do waitsocket
+                waitsocket(socketFD, session);
             }
             if (shouldContinue == NO) {
                 break;
             }
+            // after data has been read, write it to the channel
             if (bytesRead > 0) {
                 dispatch_source_merge_data(progressSource, bytesRead);
                 dispatch_data_t data = dispatch_data_create(buffer, bytesRead, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-                // convenience method, may be cancelled differently?
                 dispatch_io_write(  channel
                                   , 0
                                   , data
-                                  , _fileIOQueue
+                                  , _fileIOQueue // just for reporting the below block
                                   , ^(bool done, dispatch_data_t data, int error) {
+                                      // done refers to the chunk of data written
+                                      // TODO: consider moving progress reporting here
                                       if (error) {
                                           printf("error in dispatch_io_write %d\n", error);
                                       }
                                   });
-            }
+            } // if bytesRead is 0 or less than 0, reading is finished
         } while (shouldContinue && (bytesRead > 0));
 
         NSDate *finishTime = [NSDate date];
         dispatch_source_cancel(progressSource);
         dispatch_io_close(channel, 0);
+        channel = NULL;
+
+        /* End dispatch_io */
+
+        dispatch_group_leave(downloadGroup);
+        dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER);
 
         if (shouldContinue == NO) {
             // cancelled by user
