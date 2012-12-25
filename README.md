@@ -13,3 +13,8 @@ Quite a bit.  DLSFTPClient is still a work-in-progress,
 ## Project Dependencies
 
 1. [libssh2](https://github.com/x2on/libssh2-for-iOS) - Provides a shell script to build libssh2.a Static Library and headers
+
+## License
+
+DLSFTPClient is open-source under the BSD license. See the LICENSE file for more info.
+
