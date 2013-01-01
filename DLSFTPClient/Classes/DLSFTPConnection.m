@@ -152,6 +152,7 @@ static const size_t cBufferSize = 8192;
     _sftp = sftp;
 }
 
+// If there's an error initializing sftp, such as a non-authenticated connection, this will return NULL and we must check the session error
 - (LIBSSH2_SFTP *)sftp {
     if (_sftp == NULL) {
         LIBSSH2_SESSION *session = self.session;
@@ -171,37 +172,35 @@ static const size_t cBufferSize = 8192;
     self.socket = 0;
 }
 
-// no longer need to queue these blocks
 - (void)startSFTPSession {
-    NSLog(@"Did connect");
-    if (self.session == NULL) {
-        // close the socket
-        [self disconnectSocket];
-        // unable to initialize session
-        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                             code:eSFTPClientErrorUnableToInitializeSession
-                                         userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize libssh2 session" }];
-        if (self.queuedFailureBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self.queuedFailureBlock(error);
-                self.queuedFailureBlock = nil;
-                self.queuedSuccessBlock = nil;
-            });
-        }
-        return;
-    }
-    // valid session, get the socket descriptor
-    // must be called from socket's queue
     dispatch_async(_socketQueue, ^{
         int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
+
+        if (session == NULL) { // unable to access the session
+            // close the socket
+            [self disconnectSocket];
+            // unable to initialize session
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToInitializeSession
+                                             userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize libssh2 session" }];
+            if (self.queuedFailureBlock) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.queuedFailureBlock(error);
+                    self.queuedFailureBlock = nil;
+                    self.queuedSuccessBlock = nil;
+                });
+            }
+            return;
+        }
+        // valid session, get the socket descriptor
+        // must be called from socket's queue
         int result;
         while ((result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)) {
             waitsocket(socketFD, session);
         }
         if (result) {
             // handshake failed
-
             // free the session and close the socket
             [self disconnectSocket];
 
@@ -243,7 +242,7 @@ static const size_t cBufferSize = 8192;
             result = LIBSSH2_ERROR_METHOD_NONE;
         }
 
-        if (result) {
+        if (libssh2_userauth_authenticated(session) == 0) {
             // authentication failed
             // disconnect to disconnect/free the session and close the socket
             [self disconnect];
@@ -389,7 +388,12 @@ static const size_t cBufferSize = 8192;
         if (sftp == NULL) {
             // unable to initialize sftp
             int lastError = libssh2_session_last_errno(session);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error: %d", lastError];
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
@@ -532,7 +536,12 @@ static const size_t cBufferSize = 8192;
         if (sftp == NULL) {
             // unable to initialize sftp
             int lastError = libssh2_session_last_errno(session);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error: %d", lastError];
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
@@ -636,7 +645,12 @@ static const size_t cBufferSize = 8192;
         if (sftp == NULL) {
             // unable to initialize sftp
             int lastError = libssh2_session_last_errno(session);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error: %d", lastError];
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
@@ -735,7 +749,13 @@ static const size_t cBufferSize = 8192;
         if (sftp == NULL) {
             // unable to initialize sftp
             int lastError = libssh2_session_last_errno(session);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error: %d", lastError];
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
