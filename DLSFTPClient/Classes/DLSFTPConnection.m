@@ -771,7 +771,6 @@ static const size_t cBufferSize = 8192;
         // item removed
         if (successBlock) {
             dispatch_async(dispatch_get_main_queue(), ^{
-
                 successBlock();
             });
         }
