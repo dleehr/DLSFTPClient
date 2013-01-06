@@ -13,8 +13,6 @@
 
 @interface DLSFTPClientTests ()
 
-@property (strong, nonatomic) NSConditionLock *conditionLock;
-
 @end
 
 
@@ -37,23 +35,20 @@
     static NSString *password = @"password";
     static NSUInteger port = 22;
     __block NSError *localError = nil;
-
-    self.conditionLock = [NSConditionLock new];
     
     DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:hostname
                                                                          port:port
                                                                      username:username
                                                                      password:password];
     STAssertNotNil(connection, @"Connection is nil");
-    __weak DLSFTPClientTests *weakSelf = self;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     [connection connectWithSuccessBlock:^{
-        [weakSelf.conditionLock unlockWithCondition:1];
+        dispatch_semaphore_signal(semaphore);
     } failureBlock:^(NSError *error) {
         localError = error;
-        [weakSelf.conditionLock unlockWithCondition:1];
+        dispatch_semaphore_signal(semaphore);
     }];
-    [weakSelf.conditionLock lockWhenCondition:1];
-
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 
     // must have succeeded without error
     STAssertNil(localError, localError.localizedDescription);
