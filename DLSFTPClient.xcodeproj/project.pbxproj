@@ -28,6 +28,16 @@
 		37A5B1BA15F5119A00B1577E /* FileOperationsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */; };
 		37D6580E160EA1870041099A /* DLDocumentsDirectoryPath.m in Sources */ = {isa = PBXBuildFile; fileRef = 37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */; };
 		37D65811160EA1F50041099A /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 37D65810160EA1F50041099A /* Default-568h@2x.png */; };
+		37DB18AB1699EB300053D51A /* SenTestingKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37DB18AA1699EB300053D51A /* SenTestingKit.framework */; };
+		37DB18AC1699EB300053D51A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F02E15D699FE0078A7E5 /* UIKit.framework */; };
+		37DB18AD1699EB300053D51A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
+		37DB18B31699EB300053D51A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 37DB18B11699EB300053D51A /* InfoPlist.strings */; };
+		37DB18B61699EB300053D51A /* DLSFTPClientTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 37DB18B51699EB300053D51A /* DLSFTPClientTests.m */; };
+		37DB18BF1699F0280053D51A /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F05015D69B190078A7E5 /* libssl.a */; };
+		37DB18C01699F02B0053D51A /* libssh2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04F15D69B190078A7E5 /* libssh2.a */; };
+		37DB18C11699F02F0053D51A /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04E15D69B190078A7E5 /* libcrypto.a */; };
+		37DB18C21699F0320053D51A /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3738FE3D15D704E900D4BE07 /* libz.dylib */; };
+		37DB18C3169A30820053D51A /* libDLSFTPClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */; };
 		37F90D2015DC98F1006F8FB7 /* LoginViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */; };
 		37F90D2415E13FB6006F8FB7 /* FileBrowserViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2315E13FB6006F8FB7 /* FileBrowserViewController.m */; };
 		37F90D2715E14D87006F8FB7 /* DLFileSizeFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */; };
@@ -79,6 +89,13 @@
 		37D6580C160EA1860041099A /* DLDocumentsDirectoryPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLDocumentsDirectoryPath.h; sourceTree = "<group>"; };
 		37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLDocumentsDirectoryPath.m; sourceTree = "<group>"; };
 		37D65810160EA1F50041099A /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		37DB18A91699EB300053D51A /* DLSFTPClientTests.octest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DLSFTPClientTests.octest; sourceTree = BUILT_PRODUCTS_DIR; };
+		37DB18AA1699EB300053D51A /* SenTestingKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SenTestingKit.framework; path = Library/Frameworks/SenTestingKit.framework; sourceTree = DEVELOPER_DIR; };
+		37DB18B01699EB300053D51A /* DLSFTPClientTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DLSFTPClientTests-Info.plist"; sourceTree = "<group>"; };
+		37DB18B21699EB300053D51A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		37DB18B41699EB300053D51A /* DLSFTPClientTests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DLSFTPClientTests.h; sourceTree = "<group>"; };
+		37DB18B51699EB300053D51A /* DLSFTPClientTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DLSFTPClientTests.m; sourceTree = "<group>"; };
+		37DB18B71699EB300053D51A /* DLSFTPClientTests-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DLSFTPClientTests-Prefix.pch"; sourceTree = "<group>"; };
 		37F90D1E15DC98F1006F8FB7 /* LoginViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoginViewController.h; sourceTree = "<group>"; };
 		37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoginViewController.m; sourceTree = "<group>"; };
 		37F90D2215E13FB6006F8FB7 /* FileBrowserViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileBrowserViewController.h; sourceTree = "<group>"; };
@@ -113,6 +130,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37DB18A51699EB300053D51A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37DB18C3169A30820053D51A /* libDLSFTPClient.a in Frameworks */,
+				37DB18AB1699EB300053D51A /* SenTestingKit.framework in Frameworks */,
+				37DB18AC1699EB300053D51A /* UIKit.framework in Frameworks */,
+				37DB18AD1699EB300053D51A /* Foundation.framework in Frameworks */,
+				37DB18BF1699F0280053D51A /* libssl.a in Frameworks */,
+				37DB18C01699F02B0053D51A /* libssh2.a in Frameworks */,
+				37DB18C11699F02F0053D51A /* libcrypto.a in Frameworks */,
+				37DB18C21699F0320053D51A /* libz.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -123,6 +155,7 @@
 				3734F03515D699FE0078A7E5 /* Supporting Files */,
 				3734F04A15D69A800078A7E5 /* DemoApp */,
 				3734F03415D699FE0078A7E5 /* Classes */,
+				37DB18AE1699EB300053D51A /* Tests */,
 				3734F02D15D699FE0078A7E5 /* Frameworks */,
 				3734F02B15D699FE0078A7E5 /* Products */,
 			);
@@ -133,6 +166,7 @@
 			children = (
 				3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */,
 				372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */,
+				37DB18A91699EB300053D51A /* DLSFTPClientTests.octest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -147,6 +181,7 @@
 				3734F02E15D699FE0078A7E5 /* UIKit.framework */,
 				3734F03015D699FE0078A7E5 /* Foundation.framework */,
 				3734F03215D699FE0078A7E5 /* CoreGraphics.framework */,
+				37DB18AA1699EB300053D51A /* SenTestingKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -205,6 +240,27 @@
 			path = DLSFTPClient/DemoApp;
 			sourceTree = "<group>";
 		};
+		37DB18AE1699EB300053D51A /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				37DB18B41699EB300053D51A /* DLSFTPClientTests.h */,
+				37DB18B51699EB300053D51A /* DLSFTPClientTests.m */,
+				37DB18AF1699EB300053D51A /* Supporting Files */,
+			);
+			name = Tests;
+			path = DLSFTPClient/Tests;
+			sourceTree = "<group>";
+		};
+		37DB18AF1699EB300053D51A /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				37DB18B01699EB300053D51A /* DLSFTPClientTests-Info.plist */,
+				37DB18B11699EB300053D51A /* InfoPlist.strings */,
+				37DB18B71699EB300053D51A /* DLSFTPClientTests-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -242,6 +298,24 @@
 			productReference = 3734F02A15D699FE0078A7E5 /* DLSFTPClient.app */;
 			productType = "com.apple.product-type.application";
 		};
+		37DB18A81699EB300053D51A /* DLSFTPClientTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 37DB18BA1699EB300053D51A /* Build configuration list for PBXNativeTarget "DLSFTPClientTests" */;
+			buildPhases = (
+				37DB18A41699EB300053D51A /* Sources */,
+				37DB18A51699EB300053D51A /* Frameworks */,
+				37DB18A61699EB300053D51A /* Resources */,
+				37DB18A71699EB300053D51A /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DLSFTPClientTests;
+			productName = DLSFTPClientTests;
+			productReference = 37DB18A91699EB300053D51A /* DLSFTPClientTests.octest */;
+			productType = "com.apple.product-type.bundle";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -265,6 +339,7 @@
 			targets = (
 				3734F02915D699FE0078A7E5 /* DLSFTPClientDemo */,
 				372F7BE3162CDDE60038F852 /* DLSFTPClient */,
+				37DB18A81699EB300053D51A /* DLSFTPClientTests */,
 			);
 		};
 /* End PBXProject section */
@@ -279,7 +354,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37DB18A61699EB300053D51A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37DB18B31699EB300053D51A /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		37DB18A71699EB300053D51A /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Run the unit tests in this test bundle.\n\"${SYSTEM_DEVELOPER_DIR}/Tools/RunUnitTests\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		372F7BE0162CDDE60038F852 /* Sources */ = {
@@ -310,6 +409,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37DB18A41699EB300053D51A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37DB18B61699EB300053D51A /* DLSFTPClientTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
@@ -317,6 +424,14 @@
 			isa = PBXVariantGroup;
 			children = (
 				3734F03815D699FE0078A7E5 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		37DB18B11699EB300053D51A /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				37DB18B21699EB300053D51A /* en */,
 			);
 			name = InfoPlist.strings;
 			sourceTree = "<group>";
@@ -443,6 +558,53 @@
 			};
 			name = Release;
 		};
+		37DB18B81699EB300053D51A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"\"$(SDKROOT)/Developer/Library/Frameworks\"",
+					"\"$(DEVELOPER_LIBRARY_DIR)/Frameworks\"",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/Tests/DLSFTPClientTests-Prefix.pch";
+				INFOPLIST_FILE = "DLSFTPClient/Tests/DLSFTPClientTests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = octest;
+			};
+			name = Debug;
+		};
+		37DB18B91699EB300053D51A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"\"$(SDKROOT)/Developer/Library/Frameworks\"",
+					"\"$(DEVELOPER_LIBRARY_DIR)/Frameworks\"",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/Tests/DLSFTPClientTests-Prefix.pch";
+				INFOPLIST_FILE = "DLSFTPClient/Tests/DLSFTPClientTests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = octest;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -472,6 +634,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		37DB18BA1699EB300053D51A /* Build configuration list for PBXNativeTarget "DLSFTPClientTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				37DB18B81699EB300053D51A /* Debug */,
+				37DB18B91699EB300053D51A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};
