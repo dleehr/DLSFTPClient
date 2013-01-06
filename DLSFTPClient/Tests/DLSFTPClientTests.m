@@ -13,6 +13,8 @@
 
 @interface DLSFTPClientTests ()
 
+@property (strong, nonatomic) NSDictionary *connectionInfo;
+
 @end
 
 
@@ -20,6 +22,10 @@
 
 - (void)setUp {
     [super setUp];
+    NSString *connectionInfoPath = [[NSBundle bundleWithIdentifier:@"com.hammockdistrict.DLSFTPClientTests"] pathForResource:@"ConnectionInfo"
+                                                                                                                      ofType:@"plist"];
+    self.connectionInfo = [NSDictionary dictionaryWithContentsOfFile:connectionInfoPath];
+
 }
 
 - (void)tearDown
@@ -29,15 +35,13 @@
 }
 
 - (void)testConnect {
-    NSString *connectionInfoPath = [[NSBundle mainBundle] pathForResource:@"ConnectionInfo" ofType:@"plist"];
-    NSDictionary *connectionInfo = [NSDictionary dictionaryWithContentsOfFile:connectionInfoPath];
 
     __block NSError *localError = nil;
     
-    DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:connectionInfo[@"hostname"]
-                                                                         port:[connectionInfo[@"port"] integerValue]
-                                                                     username:connectionInfo[@"username"]
-                                                                     password:connectionInfo[@"password"]
+    DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:self.connectionInfo[@"hostname"]
+                                                                         port:[self.connectionInfo[@"port"] integerValue]
+                                                                     username:self.connectionInfo[@"username"]
+                                                                     password:self.connectionInfo[@"password"]
                                     ];
     STAssertNotNil(connection, @"Connection is nil");
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
