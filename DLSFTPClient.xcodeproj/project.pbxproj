@@ -38,6 +38,7 @@
 		37DB18C11699F02F0053D51A /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04E15D69B190078A7E5 /* libcrypto.a */; };
 		37DB18C21699F0320053D51A /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3738FE3D15D704E900D4BE07 /* libz.dylib */; };
 		37DB18C3169A30820053D51A /* libDLSFTPClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */; };
+		37DB18D1169A3AB10053D51A /* ConnectionInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 37DB18D0169A3AB10053D51A /* ConnectionInfo.plist */; };
 		37F90D2015DC98F1006F8FB7 /* LoginViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */; };
 		37F90D2415E13FB6006F8FB7 /* FileBrowserViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2315E13FB6006F8FB7 /* FileBrowserViewController.m */; };
 		37F90D2715E14D87006F8FB7 /* DLFileSizeFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = 37F90D2615E14D87006F8FB7 /* DLFileSizeFormatter.m */; };
@@ -96,6 +97,7 @@
 		37DB18B41699EB300053D51A /* DLSFTPClientTests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DLSFTPClientTests.h; sourceTree = "<group>"; };
 		37DB18B51699EB300053D51A /* DLSFTPClientTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DLSFTPClientTests.m; sourceTree = "<group>"; };
 		37DB18B71699EB300053D51A /* DLSFTPClientTests-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DLSFTPClientTests-Prefix.pch"; sourceTree = "<group>"; };
+		37DB18D0169A3AB10053D51A /* ConnectionInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = ConnectionInfo.plist; sourceTree = "<group>"; };
 		37F90D1E15DC98F1006F8FB7 /* LoginViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoginViewController.h; sourceTree = "<group>"; };
 		37F90D1F15DC98F1006F8FB7 /* LoginViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoginViewController.m; sourceTree = "<group>"; };
 		37F90D2215E13FB6006F8FB7 /* FileBrowserViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileBrowserViewController.h; sourceTree = "<group>"; };
@@ -257,6 +259,7 @@
 				37DB18B01699EB300053D51A /* DLSFTPClientTests-Info.plist */,
 				37DB18B11699EB300053D51A /* InfoPlist.strings */,
 				37DB18B71699EB300053D51A /* DLSFTPClientTests-Prefix.pch */,
+				37DB18D0169A3AB10053D51A /* ConnectionInfo.plist */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -359,6 +362,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				37DB18B31699EB300053D51A /* InfoPlist.strings in Resources */,
+				37DB18D1169A3AB10053D51A /* ConnectionInfo.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -642,6 +646,7 @@
 				37DB18B91699EB300053D51A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

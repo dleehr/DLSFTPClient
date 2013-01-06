@@ -29,17 +29,16 @@
 }
 
 - (void)testConnect {
+    NSString *connectionInfoPath = [[NSBundle mainBundle] pathForResource:@"ConnectionInfo" ofType:@"plist"];
+    NSDictionary *connectionInfo = [NSDictionary dictionaryWithContentsOfFile:connectionInfoPath];
 
-    static NSString *hostname = @"hostname";
-    static NSString *username = @"username";
-    static NSString *password = @"password";
-    static NSUInteger port = 22;
     __block NSError *localError = nil;
     
-    DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:hostname
-                                                                         port:port
-                                                                     username:username
-                                                                     password:password];
+    DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:connectionInfo[@"hostname"]
+                                                                         port:[connectionInfo[@"port"] integerValue]
+                                                                     username:connectionInfo[@"username"]
+                                                                     password:connectionInfo[@"password"]
+                                    ];
     STAssertNotNil(connection, @"Connection is nil");
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     [connection connectWithSuccessBlock:^{
