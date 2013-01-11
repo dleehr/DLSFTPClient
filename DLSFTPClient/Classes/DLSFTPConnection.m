@@ -674,7 +674,7 @@ static const size_t cBufferSize = 8192;
         }
 
         if (result) {
-            // unable to rename 
+            // unable to rename
             NSString *errorDescription = [NSString stringWithFormat:@"Unable to rename item: SFTP Status Code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToRename
