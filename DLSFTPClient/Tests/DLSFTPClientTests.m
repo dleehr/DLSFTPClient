@@ -71,7 +71,7 @@
     [super tearDown];
 }
 
-- (void)testConnect {
+- (void)test01Connect {
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     [self.connection connectWithSuccessBlock:^{
@@ -85,8 +85,8 @@
     STAssertTrue([self.connection isConnected], @"Connection unsuccessful");
 }
 
-- (void)testList {
-    [self testConnect];
+- (void)test02List {
+    [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -104,8 +104,8 @@
 }
 
 
-- (void)testMkDir {
-    [self testConnect];
+- (void)test03MkDir {
+    [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -143,8 +143,8 @@
     STAssertNil(localError, localError.localizedDescription);
 }
 
-- (void)testRmDir {
-    [self testConnect];
+- (void)test04RmDir {
+    [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -181,8 +181,8 @@
     STAssertNil(localError, localError.localizedDescription);
 }
 
-- (void)testUpload {
-    [self testConnect];
+- (void)test05Upload {
+    [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -228,6 +228,44 @@
                              }];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
+}
+
+- (void)test06Download {
+    [self test01Connect];
+    STAssertTrue([self.connection isConnected], @"Not connected");
+    __block NSError *localError = nil;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    NSString *fileName = [self.testFilePath lastPathComponent];
+    NSString *remotePath = [basePath stringByAppendingPathComponent:fileName];
+    NSString *localFileName = [NSString stringWithFormat:@"testfile-%f.jpg", [[NSDate date] timeIntervalSince1970]];
+
+    NSString *localPath = [NSTemporaryDirectory() stringByAppendingPathComponent:localFileName];
+
+    if ([localPath length] == 0) {
+        STFail(@"Unable to assemble local path for downloading");
+    }
+
+    [self.connection downloadFileAtRemotePath:remotePath
+                                  toLocalPath:localPath
+                                progressBlock:^BOOL(unsigned long long bytesReceived, unsigned long long bytesTotal) {
+                                    return YES;
+                                } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                    dispatch_semaphore_signal(semaphore);
+                                } failureBlock:^(NSError *error) {
+                                    localError = error;
+                                    dispatch_semaphore_signal(semaphore);
+                                }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
+
+    // make sure the downloaded file matches the file we uploaded earlier
+    // make sure the file listing reflects the same size
+
+    BOOL filesEqual = [[NSFileManager defaultManager] contentsEqualAtPath:self.testFilePath
+                                                                  andPath:localPath];
+    STAssertTrue(filesEqual, @"Contents of downloaded file do not match uploaded");
 }
 
 /*
