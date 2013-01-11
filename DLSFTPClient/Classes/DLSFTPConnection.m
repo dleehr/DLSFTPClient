@@ -336,8 +336,10 @@ static const size_t cBufferSize = 8192;
                 // early error
                 if (weakSelf.queuedFailureBlock) {
                     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                        weakSelf.queuedFailureBlock(error);
-                        weakSelf.queuedFailureBlock = nil;
+                        if (weakSelf.queuedFailureBlock) {
+                            weakSelf.queuedFailureBlock(error);
+                            weakSelf.queuedFailureBlock = nil;
+                        }
                     });
                 }
                 // clear out queued blocks
