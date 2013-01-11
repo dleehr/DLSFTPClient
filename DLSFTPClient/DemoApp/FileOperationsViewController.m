@@ -160,18 +160,22 @@ typedef enum {
 - (void)renameConfirmedWithNewFilename:(NSString *)text {
     __weak FileOperationsViewController *weakSelf = self;
     DLSFTPClientFileMetadataSuccessBlock successBlock = ^(DLSFTPFile *renamedItem) {
-        weakSelf.file = renamedItem;
-        weakSelf.title = [renamedItem filename];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.file = renamedItem;
+            weakSelf.title = [renamedItem filename];
+        });
     };
 
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
-        NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
-                                                            message:[error localizedDescription]
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
+                                                                message:[error localizedDescription]
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+        });
     };
 
     NSString *newPath = [[self.file.path stringByDeletingLastPathComponent] stringByAppendingPathComponent:text];
@@ -185,17 +189,21 @@ typedef enum {
 - (void)deleteConfirmed {
     __weak FileOperationsViewController *weakSelf = self;
     DLSFTPClientSuccessBlock successBlock = ^{
-        [weakSelf.navigationController popViewControllerAnimated:YES];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf.navigationController popViewControllerAnimated:YES];
+        });
     };
 
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
-        NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
-                                                            message:[error localizedDescription]
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
+                                                                message:[error localizedDescription]
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+        });
     };
 
     [self.connection removeItemAtPath:self.file.path

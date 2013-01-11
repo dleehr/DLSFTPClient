@@ -186,44 +186,50 @@
     }];
     DLSFTPClientProgressBlock progressBlock = ^BOOL(unsigned long long bytesSent, unsigned long long bytesTotal) {
         float progress = (float)bytesSent / (float)bytesTotal;
-        weakSelf.progressView.progress = progress;
-        static DLFileSizeFormatter *formatter = nil;
-        if (formatter == nil) {
-            formatter = [[DLFileSizeFormatter alloc] init];
-        }
-        NSString *sentString = [formatter stringFromSize:bytesSent];
-        NSString *totalString = [formatter stringFromSize:bytesTotal];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.progressView.progress = progress;
+            static DLFileSizeFormatter *formatter = nil;
+            if (formatter == nil) {
+                formatter = [[DLFileSizeFormatter alloc] init];
+            }
+            NSString *sentString = [formatter stringFromSize:bytesSent];
+            NSString *totalString = [formatter stringFromSize:bytesTotal];
 
-        weakSelf.progressLabel.text = [NSString stringWithFormat:@"%@ / %@", sentString, totalString];
+            weakSelf.progressLabel.text = [NSString stringWithFormat:@"%@ / %@", sentString, totalString];
+        });
         return (weakSelf.cancelled == NO);
     };
 
     DLSFTPClientFileTransferSuccessBlock successBlock = ^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
-        NSTimeInterval duration = round([finishTime timeIntervalSinceDate:startTime]);
-        DLFileSizeFormatter *formatter = [[DLFileSizeFormatter alloc] init];
-        unsigned long long rate = (file.attributes.fileSize / duration);
-        NSString *rateString = [formatter stringFromSize:rate];
-        weakSelf.progressLabel.text = nil;
+        dispatch_async(dispatch_get_main_queue(), ^{        
+            NSTimeInterval duration = round([finishTime timeIntervalSinceDate:startTime]);
+            DLFileSizeFormatter *formatter = [[DLFileSizeFormatter alloc] init];
+            unsigned long long rate = (file.attributes.fileSize / duration);
+            NSString *rateString = [formatter stringFromSize:rate];
+            weakSelf.progressLabel.text = nil;
 
-        NSString *alertMessage = [NSString stringWithFormat:@"Uploaded %@ in %.1fs\n %@/sec", file.filename, duration, rateString];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Upload completed"
-                                                            message:alertMessage
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
-        [[UIApplication sharedApplication] endBackgroundTask:taskIdentifier];
+            NSString *alertMessage = [NSString stringWithFormat:@"Uploaded %@ in %.1fs\n %@/sec", file.filename, duration, rateString];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Upload completed"
+                                                                message:alertMessage
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+            [[UIApplication sharedApplication] endBackgroundTask:taskIdentifier];
+        });
     };
 
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
-        NSString *errorString = [NSString stringWithFormat:@"Error %d", error.code];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:errorString
-                                                            message:error.localizedDescription
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
-        [[UIApplication sharedApplication] endBackgroundTask:taskIdentifier];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *errorString = [NSString stringWithFormat:@"Error %d", error.code];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:errorString
+                                                                message:error.localizedDescription
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+            [[UIApplication sharedApplication] endBackgroundTask:taskIdentifier];
+        });
     };
 
     _cancelled = NO;
