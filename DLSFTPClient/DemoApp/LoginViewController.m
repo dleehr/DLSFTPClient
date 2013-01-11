@@ -51,6 +51,8 @@ enum eFieldIndex {
     UITextField *_portField;
 }
 
+@property (strong, nonatomic) DLSFTPConnection *connection;
+
 @end
 
 @implementation LoginViewController
@@ -204,22 +206,28 @@ enum eFieldIndex {
                                                                                    port:port
                                                                                username:username
                                                                                password:password];
+    self.connection = connection;
     DLSFTPClientSuccessBlock successBlock = ^{
-        // login successful
-        FileBrowserViewController *viewController = [[FileBrowserViewController alloc] initWithSFTPConnection:connection];
-        [weakSelf.navigationController pushViewController:viewController animated:YES];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // login successful
+            FileBrowserViewController *viewController = [[FileBrowserViewController alloc] initWithSFTPConnection:connection];
+            [weakSelf.navigationController pushViewController:viewController animated:YES];
+        });
     };
 
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error){
-        loginButton.enabled = YES;
-        // login failure
-        NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
-                                                            message:[error localizedDescription]
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.connection = nil;
+            loginButton.enabled = YES;
+            // login failure
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
+                                                                message:[error localizedDescription]
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+        });
     };
 
     [connection connectWithSuccessBlock:successBlock

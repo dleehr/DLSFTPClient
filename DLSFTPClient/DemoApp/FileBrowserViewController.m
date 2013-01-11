@@ -107,20 +107,24 @@ static NSString * cRootPath = @"/";
     __weak FileBrowserViewController *weakSelf = self;
 
     DLSFTPClientArraySuccessBlock successBlock = ^(NSArray *files) {
-        weakSelf.files = files;
-        if (weakSelf.isViewLoaded) {
-            [weakSelf.tableView reloadData];
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.files = files;
+            if (weakSelf.isViewLoaded) {
+                [weakSelf.tableView reloadData];
+            }
+        });
     };
     
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
-        NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
-                                                            message:[error localizedDescription]
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-        [alertView show];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
+                                                                message:[error localizedDescription]
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+            [alertView show];
+        });
     };
 
     // begin loading files
