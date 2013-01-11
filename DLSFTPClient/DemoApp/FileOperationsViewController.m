@@ -206,7 +206,7 @@ typedef enum {
         });
     };
 
-    [self.connection removeItemAtPath:self.file.path
+    [self.connection removeFileAtPath:self.file.path
                          successBlock:successBlock
                          failureBlock:failureBlock];
 }
