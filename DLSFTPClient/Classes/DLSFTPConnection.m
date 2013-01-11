@@ -720,7 +720,7 @@ static const size_t cBufferSize = 8192;
     });
 }
 
-- (void)removeItemAtPath:(NSString *)remotePath
+- (void)removeFileAtPath:(NSString *)remotePath
             successBlock:(DLSFTPClientSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([remotePath length] == 0) {
@@ -778,7 +778,7 @@ static const size_t cBufferSize = 8192;
 
         if (result) {
             // unable to remove
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove item: SFTP Status Code %d", result];
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove file: SFTP Status Code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToRename
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
@@ -790,7 +790,7 @@ static const size_t cBufferSize = 8192;
             return;
         }
 
-        // item removed
+        // file removed
         if (successBlock) {
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock();
@@ -799,6 +799,87 @@ static const size_t cBufferSize = 8192;
     });
 
 }
+
+- (void)removeDirectoryAtPath:(NSString *)remotePath
+                 successBlock:(DLSFTPClientSuccessBlock)successBlock
+                 failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+    if ([remotePath length] == 0) {
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorInvalidArguments
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Path to remove is empty" }];
+        if (failureBlock) {
+            failureBlock(error);
+        }
+        return;
+    }
+
+    if ([self isConnected] == NO) {
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorNotConnected
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Socket not connected" }];
+        if (failureBlock) {
+            failureBlock(error);
+        }
+        return;
+    }
+
+    dispatch_async(_socketQueue,^{
+        LIBSSH2_SESSION *session = self.session;
+        LIBSSH2_SFTP *sftp = self.sftp;
+        int socketFD = self.socket;
+
+        if (sftp == NULL) {
+            // unable to initialize sftp
+            int lastError = libssh2_session_last_errno(session);
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToInitializeSFTP
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
+            if (failureBlock) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    failureBlock(error);
+                });
+            }
+            return;
+        }
+
+        // sftp is now valid
+
+        int result;
+        while((result = (libssh2_sftp_rmdir(sftp, [remotePath UTF8String]))) == LIBSSH2SFTP_EAGAIN) {
+            waitsocket(socketFD, session);
+        }
+
+        if (result) {
+            // unable to remove
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove directory: SFTP Status Code %d", result];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToRename
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
+            if (failureBlock) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    failureBlock(error);
+                });
+            }
+            return;
+        }
+
+        // directory removed
+        if (successBlock) {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                successBlock();
+            });
+        }
+    });
+    
+}
+
 
 - (void)downloadFileAtRemotePath:(NSString *)remotePath
                      toLocalPath:(NSString *)localPath
