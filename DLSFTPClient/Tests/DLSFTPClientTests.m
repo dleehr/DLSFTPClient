@@ -49,6 +49,7 @@
     [super setUp];
     NSString *connectionInfoPath = [[NSBundle bundleWithIdentifier:@"com.hammockdistrict.DLSFTPClientTests"] pathForResource:@"ConnectionInfo"
                                                                                                                       ofType:@"plist"];
+    STAssertNotNil(connectionInfoPath, @"Please add ConnectionInfo.plist to DLSFTPClient/DLSFTPClient/Tests (Copy the ConnectionInfo-template.plist and add your own SFTP host info");
     self.connectionInfo = [NSDictionary dictionaryWithContentsOfFile:connectionInfoPath];
     DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:self.connectionInfo[@"hostname"]
                                                                          port:[self.connectionInfo[@"port"] integerValue]
@@ -261,20 +262,101 @@
     STAssertNil(localError, localError.localizedDescription);
 
     // make sure the downloaded file matches the file we uploaded earlier
-    // make sure the file listing reflects the same size
 
     BOOL filesEqual = [[NSFileManager defaultManager] contentsEqualAtPath:self.testFilePath
                                                                   andPath:localPath];
     STAssertTrue(filesEqual, @"Contents of downloaded file do not match uploaded");
 }
 
-/*
- 
-- (void)testRename {
+- (void)test07Rename {
+    [self test01Connect];
+    STAssertTrue([self.connection isConnected], @"Not connected");
+    __block NSError *localError = nil;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    NSString *fileName = [self.testFilePath lastPathComponent];
+    NSString *newName = self.connectionInfo[@"newName"];
+    STAssertFalse([newName isEqualToString:fileName], @"Renaming file name cannot be equal to original name");
+
+    NSString *remoteOriginalPath = [basePath stringByAppendingPathComponent:fileName];
+    NSString *remoteRenamedPath = [basePath stringByAppendingPathComponent:newName];
+    [self.connection renameOrMoveItemAtRemotePath:remoteOriginalPath
+                                      withNewPath:remoteRenamedPath
+                                     successBlock:^(DLSFTPFile *fileOrDirectory) {
+                                         dispatch_semaphore_signal(semaphore);
+                                     } failureBlock:^(NSError *error) {
+                                         localError = error;
+                                         dispatch_semaphore_signal(semaphore);
+                                     }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
+
+    // Verify the renamed name appears in the directory listing
+    semaphore = dispatch_semaphore_create(0);
+    [self.connection listFilesInDirectory:basePath
+                             successBlock:^(NSArray *array) {
+                                 __block BOOL foundRenamedFile = NO;
+                                 __block BOOL foundOriginalFile = NO;
+                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                     if ([file.filename isEqualToString:newName]) {
+                                         foundRenamedFile = YES;
+                                     } else if([file.filename isEqualToString:fileName]) {
+                                         foundOriginalFile = YES;
+                                     }
+                                 }];
+                                 STAssertTrue(foundRenamedFile, @"Renamed file was not found in listing");
+                                 STAssertFalse(foundOriginalFile, @"Original file was found in listing but should have been renamed");
+                                 dispatch_semaphore_signal(semaphore);
+                             } failureBlock:^(NSError *error) {
+                                 localError = error;
+                                 dispatch_semaphore_signal(semaphore);
+                             }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
+}
+
+- (void)test08Delete {
+    [self test01Connect];
+    STAssertTrue([self.connection isConnected], @"Not connected");
+    __block NSError *localError = nil;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    // delete the recently renamed file
+    NSString *deleteFileName = self.connectionInfo[@"newName"];
+    NSString *remoteDeletePath = [basePath stringByAppendingPathComponent:deleteFileName];
+    [self.connection removeFileAtPath:remoteDeletePath
+                         successBlock:^{
+                             dispatch_semaphore_signal(semaphore);
+                         } failureBlock:^(NSError *error) {
+                             localError = error;
+                             dispatch_semaphore_signal(semaphore);
+                         }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
+
+    // check the listing to make sure the file is gone
+    semaphore = dispatch_semaphore_create(0);
+    [self.connection listFilesInDirectory:basePath
+                             successBlock:^(NSArray *array) {
+                                 __block BOOL foundDeletedFile = NO;
+                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                     if ([file.filename isEqualToString:deleteFileName]) {
+                                         *stop = foundDeletedFile = YES;
+                                     }
+                                 }];
+                                 STAssertFalse(foundDeletedFile, @"Deleted file was found in listing but should not have been");
+                                 dispatch_semaphore_signal(semaphore);
+                             } failureBlock:^(NSError *error) {
+                                 localError = error;
+                                 dispatch_semaphore_signal(semaphore);
+                             }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
 
 }
 
- 
+/*
+
 - (void)testCancelUpload {
 
 }
@@ -283,15 +365,6 @@
 
  }
 
-
-
-- (void)testDownload {
-    STFail(@"Not yet implemented");    
-}
-
- - (void)testUploadAndDownload {
-    STFail(@"Not yet implemented");
-}
 */
 // what else to test.  Concurrency - download and list
 
