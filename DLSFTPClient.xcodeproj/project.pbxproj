@@ -26,6 +26,7 @@
 		375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */; };
 		379B78E715E86DA5007B8DAB /* LocalFilesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */; };
 		37A5B1BA15F5119A00B1577E /* FileOperationsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */; };
+		37CDBC8E169FBBB900232688 /* testfile.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 37CDBC8D169FBBB900232688 /* testfile.jpg */; };
 		37D6580E160EA1870041099A /* DLDocumentsDirectoryPath.m in Sources */ = {isa = PBXBuildFile; fileRef = 37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */; };
 		37D65811160EA1F50041099A /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 37D65810160EA1F50041099A /* Default-568h@2x.png */; };
 		37DB18AB1699EB300053D51A /* SenTestingKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37DB18AA1699EB300053D51A /* SenTestingKit.framework */; };
@@ -87,6 +88,7 @@
 		379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LocalFilesViewController.m; sourceTree = "<group>"; };
 		37A5B1B815F5119A00B1577E /* FileOperationsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileOperationsViewController.h; sourceTree = "<group>"; };
 		37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileOperationsViewController.m; sourceTree = "<group>"; };
+		37CDBC8D169FBBB900232688 /* testfile.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = testfile.jpg; sourceTree = "<group>"; };
 		37D6580C160EA1860041099A /* DLDocumentsDirectoryPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLDocumentsDirectoryPath.h; sourceTree = "<group>"; };
 		37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLDocumentsDirectoryPath.m; sourceTree = "<group>"; };
 		37D65810160EA1F50041099A /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
@@ -247,6 +249,7 @@
 			children = (
 				37DB18B41699EB300053D51A /* DLSFTPClientTests.h */,
 				37DB18B51699EB300053D51A /* DLSFTPClientTests.m */,
+				37CDBC8D169FBBB900232688 /* testfile.jpg */,
 				37DB18AF1699EB300053D51A /* Supporting Files */,
 			);
 			name = Tests;
@@ -363,6 +366,7 @@
 			files = (
 				37DB18B31699EB300053D51A /* InfoPlist.strings in Resources */,
 				37DB18D1169A3AB10053D51A /* ConnectionInfo.plist in Resources */,
+				37CDBC8E169FBBB900232688 /* testfile.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
