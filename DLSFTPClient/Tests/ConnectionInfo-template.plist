@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>username</key>
+	<string>user</string>
+	<key>hostname</key>
+	<string>host</string>
+	<key>password</key>
+	<string>secret</string>
+	<key>port</key>
+	<integer>22</integer>
+	<key>basePath</key>
+	<string>/Users/username/directory/that/exists/already</string>
+	<key>directoryName</key>
+	<string>willBeCreated</string>
+	<key>newName</key>
+	<string>willBeRenamedTo</string>
+	<key>uploadBasePath</key>
+	<string>/Users/testuser/directory/that/exists/for/uploading</string>
+</dict>
+</plist>
