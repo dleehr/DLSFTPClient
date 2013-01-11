@@ -185,7 +185,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSession
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize libssh2 session" }];
             if (self.queuedFailureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     self.queuedFailureBlock(error);
                     self.queuedFailureBlock = nil;
                     self.queuedSuccessBlock = nil;
@@ -209,7 +209,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorHandshakeFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (self.queuedFailureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     self.queuedFailureBlock(error);
                     self.queuedFailureBlock = nil;
                     self.queuedSuccessBlock = nil;
@@ -251,7 +251,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorAuthenticationFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (self.queuedFailureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     self.queuedFailureBlock(error);
                     self.queuedFailureBlock = nil;
                     self.queuedSuccessBlock = nil;
@@ -263,7 +263,7 @@ static const size_t cBufferSize = 8192;
         // authentication succeeded
         // session is now created and we can use it
         if (self.queuedSuccessBlock) {
-            dispatch_async(dispatch_get_main_queue(), self.queuedSuccessBlock);
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), self.queuedSuccessBlock);
             self.queuedSuccessBlock = nil;
             self.queuedFailureBlock = nil;
         }
@@ -335,9 +335,11 @@ static const size_t cBufferSize = 8192;
                                                  userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
                 // early error
                 if (weakSelf.queuedFailureBlock) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        weakSelf.queuedFailureBlock(error);
-                        weakSelf.queuedFailureBlock = nil;
+                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                        if (weakSelf.queuedFailureBlock) {
+                            weakSelf.queuedFailureBlock(error);
+                            weakSelf.queuedFailureBlock = nil;
+                        }
                     });
                 }
                 // clear out queued blocks
@@ -348,7 +350,7 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)disconnect {
-    dispatch_async(_socketQueue, ^{
+    dispatch_sync(_socketQueue, ^{
         self.sftp = NULL;
         self.session = NULL;
         [self disconnectSocket];
@@ -398,7 +400,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -422,7 +424,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenDirectory
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(lastError)  }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -472,7 +474,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToReadDirectory
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result)  }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -489,7 +491,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToCloseDirectory
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result)  }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -498,7 +500,7 @@ static const size_t cBufferSize = 8192;
 
         [fileList sortUsingSelector:@selector(compare:)];
         if (successBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock(fileList);
             });
         }
@@ -546,7 +548,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -571,7 +573,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToMakeDirectory
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -591,7 +593,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToStatFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -604,7 +606,7 @@ static const size_t cBufferSize = 8192;
                                                              attributes:attributesDictionary];
 
         if (successBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock(createdDirectory);
             });
         }
@@ -655,7 +657,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -678,7 +680,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToRename
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -698,7 +700,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToStatFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -711,14 +713,14 @@ static const size_t cBufferSize = 8192;
                                                         attributes:attributesDictionary];
 
         if (successBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock(renamedItem);
             });
         }
     });
 }
 
-- (void)removeItemAtPath:(NSString *)remotePath
+- (void)removeFileAtPath:(NSString *)remotePath
             successBlock:(DLSFTPClientSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([remotePath length] == 0) {
@@ -760,7 +762,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -776,27 +778,108 @@ static const size_t cBufferSize = 8192;
 
         if (result) {
             // unable to remove
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove item: SFTP Status Code %d", result];
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove file: SFTP Status Code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorUnableToRename
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
             return;
         }
 
-        // item removed
+        // file removed
         if (successBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock();
             });
         }
     });
 
 }
+
+- (void)removeDirectoryAtPath:(NSString *)remotePath
+                 successBlock:(DLSFTPClientSuccessBlock)successBlock
+                 failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+    if ([remotePath length] == 0) {
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorInvalidArguments
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Path to remove is empty" }];
+        if (failureBlock) {
+            failureBlock(error);
+        }
+        return;
+    }
+
+    if ([self isConnected] == NO) {
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorNotConnected
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Socket not connected" }];
+        if (failureBlock) {
+            failureBlock(error);
+        }
+        return;
+    }
+
+    dispatch_async(_socketQueue,^{
+        LIBSSH2_SESSION *session = self.session;
+        LIBSSH2_SFTP *sftp = self.sftp;
+        int socketFD = self.socket;
+
+        if (sftp == NULL) {
+            // unable to initialize sftp
+            int lastError = libssh2_session_last_errno(session);
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToInitializeSFTP
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
+            if (failureBlock) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    failureBlock(error);
+                });
+            }
+            return;
+        }
+
+        // sftp is now valid
+
+        int result;
+        while((result = (libssh2_sftp_rmdir(sftp, [remotePath UTF8String]))) == LIBSSH2SFTP_EAGAIN) {
+            waitsocket(socketFD, session);
+        }
+
+        if (result) {
+            // unable to remove
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove directory: SFTP Status Code %d", result];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorUnableToRename
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
+            if (failureBlock) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    failureBlock(error);
+                });
+            }
+            return;
+        }
+
+        // directory removed
+        if (successBlock) {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                successBlock();
+            });
+        }
+    });
+    
+}
+
 
 - (void)downloadFileAtRemotePath:(NSString *)remotePath
                      toLocalPath:(NSString *)localPath
@@ -826,7 +909,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenLocalFileForWriting
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Local file is not writable" }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -842,7 +925,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize sftp" }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -868,7 +951,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(lastError) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -890,7 +973,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToStatFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -927,7 +1010,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToCreateChannel
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription } ];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -937,7 +1020,7 @@ static const size_t cBufferSize = 8192;
         // dispatch source to invoke progress handler block
         __block BOOL shouldContinue = YES; // user has not cancelled
 
-        dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());
+        dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
         __block unsigned long long bytesReceived = 0ull;
         unsigned long long filesize = attributes.filesize;
         dispatch_source_set_event_handler(progressSource, ^{
@@ -1009,7 +1092,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorCancelledByUser
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Cancelled by user." }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1028,7 +1111,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToReadFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1045,7 +1128,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToCloseFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1056,7 +1139,7 @@ static const size_t cBufferSize = 8192;
                                                  attributes:attributesDictionary];
 
         if (successBlock) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 successBlock(file, startTime, finishTime);
 
             });
@@ -1105,7 +1188,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenLocalFileForReading
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Local file is not readable" }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1120,7 +1203,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenLocalFileForReading
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Unable to get attributes of Local file", NSUnderlyingErrorKey : attributesError }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1136,7 +1219,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToInitializeSFTP
                                              userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize sftp" }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1170,7 +1253,7 @@ static const size_t cBufferSize = 8192;
                                                  code:eSFTPClientErrorUnableToOpenFile
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(lastError) }];
             if (failureBlock) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     failureBlock(error);
                 });
             }
@@ -1193,7 +1276,7 @@ static const size_t cBufferSize = 8192;
             // dispatch source to invoke progress handler block
             __block BOOL shouldContinue = YES;
 
-            dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_main_queue());
+            dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
             __block unsigned long long totalBytesSent = 0ull;
             unsigned long long filesize = [localFileAttributes fileSize];
             dispatch_source_set_event_handler(progressSource, ^{
@@ -1223,7 +1306,7 @@ static const size_t cBufferSize = 8192;
                                                          code:eSFTPClientErrorCancelledByUser
                                                      userInfo:@{ NSLocalizedDescriptionKey : @"Cancelled by user." }];
                     if (failureBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             failureBlock(error);
                         });
                     }
@@ -1237,7 +1320,7 @@ static const size_t cBufferSize = 8192;
                                                          code:eSFTPClientErrorUnableToReadFile
                                                      userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(read_error) }];
                     if (failureBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             failureBlock(error);
                         });
                     }
@@ -1256,7 +1339,7 @@ static const size_t cBufferSize = 8192;
                                                          code:eSFTPClientErrorUnableToWriteFile
                                                      userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
                     if (failureBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             failureBlock(error);
                         });
                     }
@@ -1276,7 +1359,7 @@ static const size_t cBufferSize = 8192;
                                                          code:eSFTPClientErrorUnableToStatFile
                                                      userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
                     if (failureBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             failureBlock(error);
                         });
                     }
@@ -1293,7 +1376,7 @@ static const size_t cBufferSize = 8192;
                                                          code:eSFTPClientErrorUnableToCloseFile
                                                      userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
                     if (failureBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             failureBlock(error);
                         });
                     }
@@ -1305,7 +1388,7 @@ static const size_t cBufferSize = 8192;
                                                          attributes:attributesDictionary];
 
                 if (successBlock) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                         successBlock(file, startTime, finishTime);
                     });
                 }
