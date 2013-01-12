@@ -184,7 +184,7 @@
     __block UIBackgroundTaskIdentifier taskIdentifier = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
         weakSelf.cancelled = YES;
     }];
-    DLSFTPClientProgressBlock progressBlock = ^BOOL(unsigned long long bytesSent, unsigned long long bytesTotal) {
+    DLSFTPClientProgressBlock progressBlock = ^void(unsigned long long bytesSent, unsigned long long bytesTotal) {
         float progress = (float)bytesSent / (float)bytesTotal;
         dispatch_async(dispatch_get_main_queue(), ^{
             weakSelf.progressView.progress = progress;
@@ -197,7 +197,6 @@
 
             weakSelf.progressLabel.text = [NSString stringWithFormat:@"%@ / %@", sentString, totalString];
         });
-        return (weakSelf.cancelled == NO);
     };
 
     DLSFTPClientFileTransferSuccessBlock successBlock = ^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
