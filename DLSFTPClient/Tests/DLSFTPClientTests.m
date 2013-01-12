@@ -72,6 +72,7 @@
     [super tearDown];
 }
 
+// These tests don't retain the request or attempt to cancel it 
 - (void)test01Connect {
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
