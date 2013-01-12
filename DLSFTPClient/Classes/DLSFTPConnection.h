@@ -79,7 +79,7 @@ typedef enum {
 typedef void(^DLSFTPClientSuccessBlock)(void);
 typedef void(^DLSFTPClientFailureBlock)(NSError *error);
 typedef void(^DLSFTPClientArraySuccessBlock)(NSArray *array); // Array of DLSFTPFile objects
-typedef BOOL(^DLSFTPClientProgressBlock) (unsigned long long bytesReceived, unsigned long long bytesTotal); // return NO for cancel
+typedef void(^DLSFTPClientProgressBlock) (unsigned long long bytesReceived, unsigned long long bytesTotal); // return NO for cancel
 typedef void(^DLSFTPClientFileTransferSuccessBlock)(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime);
 typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory);
 
