@@ -44,12 +44,40 @@ NSString * const SFTPClientErrorDomain = @"SFTPClientErrorDomain";
 NSString * const SFTPClientUnderlyingErrorKey = @"SFTPClientUnderlyingError";
 
 static const NSUInteger cDefaultSSHPort = 22;
-static const NSTimeInterval cDefaultConnectionTimeout = 60.0;
+static const NSTimeInterval cDefaultConnectionTimeout = 15.0;
 static const size_t cBufferSize = 8192;
 
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
 #import "NSDictionary+SFTPFileAttributes.h"
+
+typedef void(^DLSFTPRequestCancelHandler)(void);
+
+@interface DLSFTPRequest ()
+
++ (DLSFTPRequest *)request;
+
+@property (nonatomic, readwrite, getter = isCancelled) BOOL cancelled;
+@property (nonatomic, readwrite, copy) DLSFTPRequestCancelHandler cancelHandler;
+
+@end
+
+@implementation DLSFTPRequest
+
++ (DLSFTPRequest *)request {
+    return [[DLSFTPRequest alloc] init];
+}
+
+- (void)cancel {
+    if (self.cancelHandler) {
+        DLSFTPRequestCancelHandler handler = self.cancelHandler;
+        self.cancelHandler = nil;
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), handler);
+    }
+    self.cancelled = YES;
+}
+
+@end
 
 @interface DLSFTPConnection () {
 
@@ -60,8 +88,10 @@ static const size_t cBufferSize = 8192;
     dispatch_queue_t _fileIOQueue;
 }
 
+// These blocks are only used for connection operation, name them so
 @property (nonatomic, copy) id queuedSuccessBlock;
 @property (nonatomic, copy) DLSFTPClientFailureBlock queuedFailureBlock;
+
 @property (nonatomic, copy) NSString *username;
 @property (nonatomic, copy) NSString *password;
 @property (nonatomic, copy) NSString *hostname;
@@ -71,7 +101,9 @@ static const size_t cBufferSize = 8192;
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
-@property (nonatomic, assign) BOOL isCancelled;
+// Request handling
+#warning requests are not yet added to this array
+@property (nonatomic, strong) NSMutableArray *requests; // just for cancelling all
 @end
 
 
@@ -109,9 +141,9 @@ static const size_t cBufferSize = 8192;
         self.username = username;
         self.password = password;
         self.socket = 0;
+        self.requests = [[NSMutableArray alloc] init];
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socketqueue", DISPATCH_QUEUE_SERIAL);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
-        _isCancelled = NO;
     }
     return self;
 }
@@ -172,7 +204,7 @@ static const size_t cBufferSize = 8192;
     self.socket = 0;
 }
 
-- (void)startSFTPSession {
+- (void)startSFTPSessionWithRequest:(DLSFTPRequest *)request {
     dispatch_async(_socketQueue, ^{
         int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
@@ -181,18 +213,12 @@ static const size_t cBufferSize = 8192;
             // close the socket
             [self disconnectSocket];
             // unable to initialize session
-            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                                 code:eSFTPClientErrorUnableToInitializeSession
-                                             userInfo:@{ NSLocalizedDescriptionKey : @"Unable to initialize libssh2 session" }];
-            if (self.queuedFailureBlock) {
-                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    self.queuedFailureBlock(error);
-                    self.queuedFailureBlock = nil;
-                    self.queuedSuccessBlock = nil;
-                });
-            }
+            [self failWithErrorCode:eSFTPClientErrorUnableToInitializeSession
+                   errorDescription:@"Unable to initialize libssh2 session"];
+            self.queuedSuccessBlock = nil;
             return;
         }
+        // TODO: check if request cancelled
         // valid session, get the socket descriptor
         // must be called from socket's queue
         int result;
@@ -259,7 +285,7 @@ static const size_t cBufferSize = 8192;
             }
             return;
         }
-
+        request.cancelHandler = nil;
         // authentication succeeded
         // session is now created and we can use it
         if (self.queuedSuccessBlock) {
@@ -279,77 +305,120 @@ static const size_t cBufferSize = 8192;
     return self.socket != 0;
 }
 
-- (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
-                   failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
+         errorDescription:(NSString *)errorDescription {
+    NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                         code:errorCode
+                                     userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
+    if (self.queuedFailureBlock) {
+        __weak DLSFTPConnection *weakSelf = self;
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            if (weakSelf.queuedFailureBlock) {
+                weakSelf.queuedFailureBlock(error);
+                weakSelf.queuedFailureBlock = nil;
+            }
+        });
+    }
+}
+
+- (DLSFTPRequest *)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
+                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if (self.queuedSuccessBlock) {
         // last connection not yet connected
-        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                             code:eSFTPClientErrorOperationInProgress
-                                         userInfo:@{ NSLocalizedDescriptionKey : @"Operation in progress" }];
-        if (failureBlock) {
-            failureBlock(error);
-        }
+        [self failWithErrorCode:eSFTPClientErrorOperationInProgress
+               errorDescription:@"Operation in progress"];
+        return nil;
     } else if (   ([self.hostname length] == 0)
                || ([self.username length] == 0)
                || ([self.password length] == 0)
                || (self.port == 0)) {
             // don't have valid arguments
-        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                             code:eSFTPClientErrorInvalidArguments
-                                         userInfo:@{ NSLocalizedDescriptionKey : @"Invalid arguments" }];
-        if (failureBlock) {
-            failureBlock(error);
-        }
+        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
+               errorDescription:@"Invalid arguments"];
+        return nil;
     } else if(self.socket) {
         // already have a socket
         // last connection not yet connected
-        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                             code:eSFTPClientErrorAlreadyConnected
-                                         userInfo:@{ NSLocalizedDescriptionKey : @"Already connected" }];
-        if (failureBlock) {
-            failureBlock(error);
-        }
+        [self failWithErrorCode:eSFTPClientErrorAlreadyConnected
+               errorDescription:@"Already connected"];
+        return nil;
     } else {
         self.queuedSuccessBlock = successBlock;
         self.queuedFailureBlock = failureBlock;
 
         __weak DLSFTPConnection *weakSelf = self;
 
+        DLSFTPRequest *request = [DLSFTPRequest new];
+        // set up a timeout handler
+        dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
+        dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
+        dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+        dispatch_source_set_event_handler(timeoutTimer, ^{
+            NSLog(@"timeout Timer fired, disconnecting socket");
+            // timeout fired, close the socket
+            [weakSelf disconnectSocket]; // closes on socketQueue
+            // and fail
+            [weakSelf failWithErrorCode:eSFTPClientErrorConnectionTimedOut
+                       errorDescription:@"Connection timed out"];
+            // clear out the queued success block
+            weakSelf.queuedSuccessBlock = nil;
+            dispatch_source_cancel(timeoutTimer);
+        });
+
+        // Cancel handler for connection requests
+        request.cancelHandler = ^{
+            dispatch_source_cancel(timeoutTimer);
+            [weakSelf disconnect];
+            [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
+                       errorDescription:@"Cancelled by user"];
+            weakSelf.queuedSuccessBlock = nil;
+        };
+
+        // start the timer
+        dispatch_resume(timeoutTimer);
+
         // initialize and connect the socket on the socket queue
         dispatch_async(_socketQueue, ^{
             unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
             weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
+            if (weakSelf.socket < 0) {
+                [weakSelf failWithErrorCode:eSFTPClientErrorSocketError
+                           errorDescription:@"Unable to create socket"];
+                weakSelf.queuedSuccessBlock = nil;
+                return;
+            }
             struct sockaddr_in soin;
             soin.sin_family = AF_INET;
             soin.sin_port = htons(weakSelf.port);
             soin.sin_addr.s_addr = hostaddr;
-            // how to do timeouts?
+
             int result = connect(weakSelf.socket, (struct sockaddr*)(&soin),sizeof(struct sockaddr_in));
+            // connected, remove timeout operations
+            // The request cancel handler should not cancel the timeout timer from here on out
+            request.cancelHandler = ^{
+                [weakSelf disconnect];
+                [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
+                           errorDescription:@"Cancelled by user"];
+                weakSelf.queuedSuccessBlock = nil;
+            };
+            // cancel the timeout timer after connecting
+            dispatch_source_cancel(timeoutTimer);
             if (result == 0) {
                 // connected socket, start the SFTP session
-                [weakSelf startSFTPSession];
+                [weakSelf startSFTPSessionWithRequest:request];
             } else {
                 NSString *errorDescription = [NSString stringWithFormat:@"Unable to connect: socket error: %d", result];
-                NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                                     code:eSFTPClientErrorUnableToConnect
-                                                 userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
-                // early error
-                if (weakSelf.queuedFailureBlock) {
-                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                        if (weakSelf.queuedFailureBlock) {
-                            weakSelf.queuedFailureBlock(error);
-                            weakSelf.queuedFailureBlock = nil;
-                        }
-                    });
-                }
-                // clear out queued blocks
+                [weakSelf failWithErrorCode:eSFTPClientErrorUnableToConnect
+                           errorDescription:errorDescription];
                 weakSelf.queuedSuccessBlock = nil;
             }
         });
+        return request;
     }
 }
 
 - (void)disconnect {
+    [self cancelAllRequests];
     dispatch_sync(_socketQueue, ^{
         self.sftp = NULL;
         self.session = NULL;
@@ -357,20 +426,19 @@ static const size_t cBufferSize = 8192;
     });
 }
 
-// use a file descriptor to set this, like a pipe perhaps.  include it in waitsocket so waitsocket returns when cancel is set
-- (void)cancelTransfer {
-    dispatch_sync(_socketQueue, ^{
-        self.isCancelled = YES;
-    });
-
+- (void)cancelAllRequests {
+    for (DLSFTPRequest *request in self.requests) {
+        [request cancel];
+    }
+    [self.requests removeAllObjects];
 }
 
 #pragma mark SFTP
 
 // list files
-- (void)listFilesInDirectory:(NSString *)directoryPath
-                successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-                failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
+                           successBlock:(DLSFTPClientArraySuccessBlock)successBlock
+                           failureBlock:(DLSFTPClientFailureBlock)failureBlock {
 
     if ([self isConnected] == NO) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -379,8 +447,9 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
+    DLSFTPRequest *request = [DLSFTPRequest request];
 
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
@@ -505,11 +574,12 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
+    return request;
 }
 
-- (void)makeDirectory:(NSString *)directoryPath
-         successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-         failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
+                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
+                    failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([directoryPath length] == 0) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorInvalidArguments
@@ -517,7 +587,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
     if ([self isConnected] == NO) {
@@ -527,9 +597,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
@@ -611,12 +682,13 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
+    return request;
 }
 
-- (void)renameOrMoveItemAtRemotePath:(NSString *)remotePath
-                         withNewPath:(NSString *)newPath
-                        successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                        failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)renameOrMoveItemAtRemotePath:(NSString *)remotePath
+                                    withNewPath:(NSString *)newPath
+                                   successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
+                                   failureBlock:(DLSFTPClientFailureBlock)failureBlock {
 
     if (   ([remotePath length] == 0)
         || ([newPath length] == 0)) {
@@ -626,7 +698,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
     if ([self isConnected] == NO) {
@@ -636,9 +708,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
@@ -718,11 +791,12 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
+    return request;
 }
 
-- (void)removeFileAtPath:(NSString *)remotePath
-            successBlock:(DLSFTPClientSuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
+                       successBlock:(DLSFTPClientSuccessBlock)successBlock
+                       failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([remotePath length] == 0) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorInvalidArguments
@@ -730,7 +804,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
     if ([self isConnected] == NO) {
@@ -740,9 +814,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
@@ -797,12 +872,12 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
-
+    return request;
 }
 
-- (void)removeDirectoryAtPath:(NSString *)remotePath
-                 successBlock:(DLSFTPClientSuccessBlock)successBlock
-                 failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
+                            successBlock:(DLSFTPClientSuccessBlock)successBlock
+                            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([remotePath length] == 0) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorInvalidArguments
@@ -810,7 +885,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
     if ([self isConnected] == NO) {
@@ -820,9 +895,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue,^{
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
@@ -877,15 +953,15 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
-    
+    return request;
 }
 
 
-- (void)downloadFileAtRemotePath:(NSString *)remotePath
-                     toLocalPath:(NSString *)localPath
-                   progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                    successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                    failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
+                                toLocalPath:(NSString *)localPath
+                              progressBlock:(DLSFTPClientProgressBlock)progressBlock
+                               successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
+                               failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([self isConnected] == NO) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorNotConnected
@@ -893,9 +969,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue, ^{
         // create file if it does not exist
         if ([[NSFileManager defaultManager] fileExistsAtPath:localPath] == NO) {
@@ -1145,13 +1222,14 @@ static const size_t cBufferSize = 8192;
             });
         }
     });
+    return request;
 }
 
-- (void)uploadFileToRemotePath:(NSString *)remotePath
-                 fromLocalPath:(NSString *)localPath
-                 progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                  successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                  failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+- (DLSFTPRequest *)uploadFileToRemotePath:(NSString *)remotePath
+                            fromLocalPath:(NSString *)localPath
+                            progressBlock:(DLSFTPClientProgressBlock)progressBlock
+                             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
+                             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if ([self isConnected] == NO) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                              code:eSFTPClientErrorNotConnected
@@ -1159,7 +1237,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
     if (remotePath == nil) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -1168,7 +1246,7 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
     if (localPath == nil) {
         NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -1177,10 +1255,10 @@ static const size_t cBufferSize = 8192;
         if (failureBlock) {
             failureBlock(error);
         }
-        return;
+        return nil;
     }
 
-
+    DLSFTPRequest *request = [DLSFTPRequest request];
     dispatch_async(_socketQueue, ^{
         // verify local file is readable prior to upload
         if ([[NSFileManager defaultManager] isReadableFileAtPath:localPath] == NO) {
@@ -1406,6 +1484,13 @@ static const size_t cBufferSize = 8192;
                              , SIZE_MAX
                              , _socketQueue // blocks with data queued on the socket queue
                              , ^(bool done, dispatch_data_t data, int error) {
+                                 // dispatch_data_apply would be ideal to use here, but the amount of data passed to each block
+                                 // is decided by dispatch_io_read, and we'd need to chunk it up to fit in the buffer anyways
+                                 // still, might be better for cancellation
+                                 // ACTUALLY maybe it can be specified, via the high/low watermark
+
+                                 // and dispatch_io_set_interval should help with stalling to cancel
+
                                  // data has been read into dispatch_data_t data
                                  // this will be executed on _socketQueue
                                  // now loop over the data in sizes smaller than the buffer
@@ -1445,7 +1530,7 @@ static const size_t cBufferSize = 8192;
                              }); // end of dispatch_io_read
         }); // end of _fileIOQueue
     }); // end of socketQueue
-
+    return request;
 }
 
 

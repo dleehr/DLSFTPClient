@@ -41,6 +41,8 @@ typedef enum {
     eSFTPClientErrorOperationInProgress,
     eSFTPClientErrorInvalidArguments,
     eSFTPClientErrorAlreadyConnected,
+    eSFTPClientErrorConnectionTimedOut,
+    eSFTPClientErrorSocketError,
     eSFTPClientErrorUnableToConnect,
     eSFTPClientErrorUnableToInitializeSession,
     eSFTPClientErrorHandshakeFailed,
@@ -63,6 +65,13 @@ typedef enum {
     eSFTPClientErrorUnableToRename
 } eSFTPClientErrorCode;
 
+// Request object, for cancelling
+@interface DLSFTPRequest : NSObject
+
+@property (nonatomic, readonly, getter = isCancelled) BOOL cancelled;
+- (void)cancel;
+@end
+
 // Block Definitions
 
 @class DLSFTPFile;
@@ -74,11 +83,9 @@ typedef BOOL(^DLSFTPClientProgressBlock) (unsigned long long bytesReceived, unsi
 typedef void(^DLSFTPClientFileTransferSuccessBlock)(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime);
 typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory);
 
-
 @interface DLSFTPConnection : NSObject
 
 #pragma mark Connection
-
 
 - (id)initWithHostname:(NSString *)hostname
                   port:(NSUInteger)port
@@ -89,54 +96,53 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
               username:(NSString *)username
               password:(NSString *)password;
 
-- (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
-                   failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
+                              failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 - (void)disconnect;
+- (void)cancelAllRequests;
 - (BOOL)isConnected;
 
 #pragma mark Directory Operations
 
-- (void)listFilesInDirectory:(NSString *)directoryPath
-                successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-                failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
+                           successBlock:(DLSFTPClientArraySuccessBlock)successBlock
+                           failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
-- (void)makeDirectory:(NSString *)directoryPath
-         successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-         failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
+                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
+                    failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 #pragma mark Metadata Operations
 
-- (void)renameOrMoveItemAtRemotePath:(NSString *)remotePath
-                         withNewPath:(NSString *)newPath
-                        successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                        failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)renameOrMoveItemAtRemotePath:(NSString *)remotePath
+                                    withNewPath:(NSString *)newPath
+                                   successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
+                                   failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
-- (void)removeFileAtPath:(NSString *)remotePath
+- (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
             successBlock:(DLSFTPClientSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
-- (void)removeDirectoryAtPath:(NSString *)remotePath
-                 successBlock:(DLSFTPClientSuccessBlock)successBlock
-                 failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
+                            successBlock:(DLSFTPClientSuccessBlock)successBlock
+                            failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 
 #pragma mark File Transfer
 // progressBlock uses dispatch_source_merge_data and will be queued on main thread.
 // It may not reach 100%, intended to be used for UI updates only
 
-- (void)downloadFileAtRemotePath:(NSString *)remotePath
-                     toLocalPath:(NSString *)localPath
-                   progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                    successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                    failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
+                                toLocalPath:(NSString *)localPath
+                              progressBlock:(DLSFTPClientProgressBlock)progressBlock
+                               successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
+                               failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
-- (void)uploadFileToRemotePath:(NSString *)remotePath
-                 fromLocalPath:(NSString *)localPath
-                 progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                  successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                  failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-- (void)cancelTransfer;
+- (DLSFTPRequest *)uploadFileToRemotePath:(NSString *)remotePath
+                            fromLocalPath:(NSString *)localPath
+                            progressBlock:(DLSFTPClientProgressBlock)progressBlock
+                             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
+                             failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 @end
