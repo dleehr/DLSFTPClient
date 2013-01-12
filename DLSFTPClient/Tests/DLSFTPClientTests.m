@@ -198,9 +198,8 @@
 
     [self.connection uploadFileToRemotePath:destPath
                               fromLocalPath:self.testFilePath
-                              progressBlock:^BOOL(unsigned long long bytesReceived, unsigned long long bytesTotal) {
-                                  return YES;
-                              } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                              progressBlock:nil
+                               successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                   dispatch_semaphore_signal(semaphore);
                               } failureBlock:^(NSError *error) {
                                   localError = error;
@@ -251,9 +250,8 @@
 
     [self.connection downloadFileAtRemotePath:remotePath
                                   toLocalPath:localPath
-                                progressBlock:^BOOL(unsigned long long bytesReceived, unsigned long long bytesTotal) {
-                                    return YES;
-                                } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                progressBlock:nil
+                                 successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                     dispatch_semaphore_signal(semaphore);
                                 } failureBlock:^(NSError *error) {
                                     localError = error;
