@@ -39,7 +39,7 @@
 
 @property (nonatomic, weak) DLSFTPFile *file;
 @property (nonatomic, weak) DLSFTPConnection *connection;
-@property (nonatomic, readwrite, assign) BOOL cancelled;
+@property (nonatomic, strong) DLSFTPRequest *request;
 @property (nonatomic, weak) UIProgressView *progressView;
 @property (nonatomic, weak) UILabel *progressLabel;
 
@@ -176,7 +176,7 @@
     
     __weak FileDownloadViewController *weakSelf = self;
     __block UIBackgroundTaskIdentifier taskIdentifier = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
-        weakSelf.cancelled = YES;
+        [weakSelf.request cancel];
     }];
     DLSFTPClientProgressBlock progressBlock = ^void(unsigned long long bytesReceived, unsigned long long bytesTotal) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -226,16 +226,16 @@
     };
 
     NSString *remotePath = self.file.path;
-    self.cancelled = NO;
-    [self.connection downloadFileAtRemotePath:remotePath
-                              toLocalPath:[DLDocumentsDirectoryPath() stringByAppendingPathComponent:self.file.filename]
-                            progressBlock:progressBlock
-                             successBlock:successBlock
-                             failureBlock:failureBlock];
+
+    self.request = [self.connection downloadFileAtRemotePath:remotePath
+                                                 toLocalPath:[DLDocumentsDirectoryPath() stringByAppendingPathComponent:self.file.filename]
+                                               progressBlock:progressBlock
+                                                successBlock:successBlock
+                                                failureBlock:failureBlock];
 }
 
 - (void)cancelTapped:(id)sender {
-    self.cancelled = YES;
+    [self.request cancel];
 }
 
 @end

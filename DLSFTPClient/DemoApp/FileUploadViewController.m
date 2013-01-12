@@ -41,7 +41,7 @@
 @property (nonatomic, weak) DLSFTPConnection *connection;
 @property (nonatomic, copy) NSString *remoteBasePath;
 @property (nonatomic, copy) NSString *localPath;
-@property (nonatomic, readwrite, assign) BOOL cancelled;
+@property (nonatomic, strong) DLSFTPRequest *request;
 @property (nonatomic, weak) UIProgressView *progressView;
 @property (nonatomic, weak) UILabel *progressLabel;
 
@@ -182,7 +182,7 @@
 
     __weak FileUploadViewController *weakSelf = self;
     __block UIBackgroundTaskIdentifier taskIdentifier = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
-        weakSelf.cancelled = YES;
+        [weakSelf.request cancel];
     }];
     DLSFTPClientProgressBlock progressBlock = ^void(unsigned long long bytesSent, unsigned long long bytesTotal) {
         float progress = (float)bytesSent / (float)bytesTotal;
@@ -231,18 +231,17 @@
         });
     };
 
-    _cancelled = NO;
     NSString *localFilename = [self.localPath lastPathComponent];
     NSString *remotePath = [self.remoteBasePath stringByAppendingPathComponent:localFilename];
-    [self.connection uploadFileToRemotePath:remotePath
-                              fromLocalPath:self.localPath
-                              progressBlock:progressBlock
-                               successBlock:successBlock
-                               failureBlock:failureBlock];
+    self.request = [self.connection uploadFileToRemotePath:remotePath
+                                             fromLocalPath:self.localPath
+                                             progressBlock:progressBlock
+                                              successBlock:successBlock
+                                              failureBlock:failureBlock];
 }
 
 - (void)cancelTapped:(id)sender {
-    _cancelled = YES;
+    [self.request cancel];
 }
 
 
