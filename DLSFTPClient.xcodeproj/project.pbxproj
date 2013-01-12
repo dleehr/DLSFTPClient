@@ -579,7 +579,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "DLSFTPClient/Tests/DLSFTPClientTests-Prefix.pch";
 				INFOPLIST_FILE = "DLSFTPClient/Tests/DLSFTPClientTests-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
@@ -605,7 +604,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "DLSFTPClient/Tests/DLSFTPClientTests-Prefix.pch";
 				INFOPLIST_FILE = "DLSFTPClient/Tests/DLSFTPClientTests-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
