@@ -354,18 +354,76 @@
 
 }
 
-/*
+- (void)test09CancelUpload {
+    [self test01Connect];
+    STAssertTrue([self.connection isConnected], @"Not connected");
+    __block NSError *localError = nil;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
-- (void)testCancelUpload {
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    NSString *fileName = [self.testFilePath lastPathComponent];
+    NSString *destPath = [basePath stringByAppendingPathComponent:fileName];
+
+    // Use the progress block to cancel the request at 50%
+    __block DLSFTPRequest *request = nil;
+    request = [self.connection uploadFileToRemotePath:destPath
+                                        fromLocalPath:self.testFilePath
+                                        progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
+                                            STAssertFalse(request.isCancelled, @"Progress block called with cancelled request");
+                                            // cancel at 50%
+                                            if (bytesSent * 2 >= bytesTotal) {
+                                                [request cancel];
+                                            }
+                                        } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                            dispatch_semaphore_signal(semaphore);
+                                        } failureBlock:^(NSError *error) {
+                                            localError = error;
+                                            dispatch_semaphore_signal(semaphore);
+                                        }];
+
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    // error should be cancelled by user
+    STAssertNotNil(localError, @"Cancelled upload should have failed");
+    STAssertEquals(localError.code, eSFTPClientErrorCancelledByUser, @"Expecting cancelled by user but got other error");
 
 }
 
- - (void)testCancelDownload {
+- (void)test10CancelDownload {
+    [self test01Connect];
+    STAssertTrue([self.connection isConnected], @"Not connected");
+    __block NSError *localError = nil;
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
- }
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    NSString *fileName = [self.testFilePath lastPathComponent];
+    NSString *remotePath = [basePath stringByAppendingPathComponent:fileName];
+    NSString *localFileName = [NSString stringWithFormat:@"testfile-%f.jpg", [[NSDate date] timeIntervalSince1970]];
 
-*/
-// what else to test.  Concurrency - download and list
+    NSString *localPath = [NSTemporaryDirectory() stringByAppendingPathComponent:localFileName];
 
+    if ([localPath length] == 0) {
+        STFail(@"Unable to assemble local path for downloading");
+    }
+
+    __block DLSFTPRequest *request = nil;
+    request = [self.connection downloadFileAtRemotePath:remotePath
+                                            toLocalPath:localPath
+                                          progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
+                                              STAssertFalse(request.isCancelled, @"Progress block called with cancelled request");
+                                              // cancel at 50%
+                                              if (bytesSent * 2 >= bytesTotal) {
+                                                  [request cancel];
+                                              }
+                                          } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                              dispatch_semaphore_signal(semaphore);
+                                           } failureBlock:^(NSError *error) {
+                                               localError = error;
+                                               dispatch_semaphore_signal(semaphore);
+                                           }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    // error should be cancelled by user
+    STAssertNotNil(localError, @"Cancelled download should have failed");
+    STAssertEquals(localError.code, eSFTPClientErrorCancelledByUser, @"Expecting cancelled by user but got other error");
+}
 
 @end
