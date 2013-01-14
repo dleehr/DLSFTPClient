@@ -84,6 +84,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                errorDescription:@"Cancelled by user" \
                 underlyingError:nil \
                    failureBlock:failureBlock]; \
+    [weakSelf removeRequest:request]; \
     return; \
 }
 
@@ -95,6 +96,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
     // file IO
     dispatch_queue_t _fileIOQueue;
+
+    // request queue
+    dispatch_queue_t _requestQueue;
 }
 
 // These blocks are only used for connection operation, name them so
@@ -110,9 +114,10 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
-// Request handling
-#warning requests are not yet added to this array
-@property (nonatomic, strong) NSMutableArray *requests; // just for cancelling all
+// Request handling, private
+@property (nonatomic, strong) NSMutableArray *requests;
+- (void)addRequest:(DLSFTPRequest *)request;
+- (void)removeRequest:(DLSFTPRequest *)request;
 @end
 
 
@@ -151,8 +156,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         self.password = password;
         self.socket = 0;
         self.requests = [[NSMutableArray alloc] init];
-        _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socketqueue", DISPATCH_QUEUE_SERIAL);
+        _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
+        _requestQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.request", DISPATCH_QUEUE_CONCURRENT);
     }
     return self;
 }
@@ -214,6 +220,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 
 - (void)startSFTPSessionWithRequest:(DLSFTPRequest *)request {
+    __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue, ^{
         int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
@@ -225,13 +232,13 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             [self failWithErrorCode:eSFTPClientErrorUnableToInitializeSession
                    errorDescription:@"Unable to initialize libssh2 session"];
             self.queuedSuccessBlock = nil;
+            [weakSelf removeRequest:request];
             return;
         }
-        // TODO: check if request cancelled
         // valid session, get the socket descriptor
         // must be called from socket's queue
         int result;
-        while ((result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
+        while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
                && request.isCancelled == NO) {
             waitsocket(socketFD, session);
         }
@@ -251,6 +258,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                     self.queuedSuccessBlock = nil;
                 });
             }
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -296,6 +304,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                     self.queuedSuccessBlock = nil;
                 });
             }
+            [weakSelf removeRequest:request];
             return;
         }
         request.cancelHandler = nil;
@@ -306,12 +315,35 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             self.queuedSuccessBlock = nil;
             self.queuedFailureBlock = nil;
         }
+        [weakSelf removeRequest:request];
         return;
     });
+}
 
+- (void)addRequest:(DLSFTPRequest *)request {
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_barrier_async(_requestQueue, ^{
+        [weakSelf.requests addObject:request];
+    });
+}
+
+- (void)removeRequest:(DLSFTPRequest *)request {
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_barrier_async(_requestQueue, ^{
+        [weakSelf.requests removeObject:request];
+    });
 }
 
 #pragma mark Public
+
+- (NSUInteger)requestCount {
+    __block NSUInteger count = 0;
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_sync(_requestQueue, ^{
+        count = [weakSelf.requests count];
+    });
+    return count;
+}
 
 // just if the socket is connected
 - (BOOL)isConnected {
@@ -360,8 +392,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         self.queuedFailureBlock = failureBlock;
 
         __weak DLSFTPConnection *weakSelf = self;
-
         DLSFTPRequest *request = [DLSFTPRequest new];
+        [self addRequest:request];
         // set up a timeout handler
         dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
         dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
@@ -424,6 +456,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 [weakSelf failWithErrorCode:eSFTPClientErrorUnableToConnect
                            errorDescription:errorDescription];
                 weakSelf.queuedSuccessBlock = nil;
+                [weakSelf removeRequest:request];
+                return;
             }
         });
         return request;
@@ -440,10 +474,13 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 
 - (void)cancelAllRequests {
-    for (DLSFTPRequest *request in self.requests) {
-        [request cancel];
-    }
-    [self.requests removeAllObjects];
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_barrier_async(_requestQueue, ^{
+        for (DLSFTPRequest *request in weakSelf.requests) {
+            [request cancel];
+        }
+        [weakSelf.requests removeAllObjects];
+    });
 }
 
 #pragma mark SFTP
@@ -485,6 +522,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     }
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue,^{
         CHECK_REQUEST_CANCELLED
@@ -505,6 +543,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -529,6 +568,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(lastError)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -578,6 +618,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -592,6 +633,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -601,6 +643,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock(fileList);
             });
         }
+        [weakSelf removeRequest:request];
+        return;
     });
     return request;
 }
@@ -625,6 +669,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue,^{
         CHECK_REQUEST_CANCELLED
@@ -645,6 +690,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -669,6 +715,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -689,6 +736,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -702,6 +750,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock(createdDirectory);
             });
         }
+        [weakSelf removeRequest:request];
     });
     return request;
 }
@@ -729,6 +778,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue,^{
         CHECK_REQUEST_CANCELLED
@@ -749,6 +799,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -771,6 +822,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -791,6 +843,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -804,6 +857,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock(renamedItem);
             });
         }
+        [weakSelf removeRequest:request];
     });
     return request;
 }
@@ -828,6 +882,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue,^{
         CHECK_REQUEST_CANCELLED
@@ -849,6 +904,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -869,6 +925,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -878,6 +935,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock();
             });
         }
+        [weakSelf removeRequest:request];
     });
     return request;
 }
@@ -902,6 +960,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue,^{
         CHECK_REQUEST_CANCELLED
@@ -923,6 +982,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -943,6 +1003,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -952,6 +1013,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock();
             });
         }
+        [weakSelf removeRequest:request];
     });
     return request;
 }
@@ -971,6 +1033,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue, ^{
         CHECK_REQUEST_CANCELLED
@@ -986,6 +1049,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:@"Local file is not writable"
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -998,6 +1062,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:@"Unable to initialize sftp"
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1022,6 +1087,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(lastError)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
         // should be able to cancel any of these
@@ -1041,6 +1107,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1074,6 +1141,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1151,6 +1219,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription: @"Cancelled by user."
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1166,6 +1235,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(result)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1179,6 +1249,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
         NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
@@ -1189,6 +1260,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 successBlock(file, startTime, finishTime);
             });
         }
+        [weakSelf removeRequest:request];
     });
     return request;
 }
@@ -1221,6 +1293,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     }
 
     DLSFTPRequest *request = [DLSFTPRequest request];
+    [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_async(_socketQueue, ^{
         CHECK_REQUEST_CANCELLED
@@ -1230,6 +1303,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:@"Local file is not readable"
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1241,6 +1315,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription: @"Unable to get attributes of Local file"
                         underlyingError:@(attributesError.code)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1253,6 +1328,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:@"Unable to initialize sftp"
                         underlyingError:nil
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1272,7 +1348,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                             && request.isCancelled == NO) {
             waitsocket(socketFD, session);
         }
-        
+
         CHECK_REQUEST_CANCELLED
 
         if (handle == NULL) {
@@ -1283,6 +1359,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                        errorDescription:errorDescription
                         underlyingError:@(lastError)
                            failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
             return;
         }
 
@@ -1333,6 +1410,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                errorDescription:@"Cancelled by user."
                                 underlyingError:nil
                                    failureBlock:failureBlock];
+                    [weakSelf removeRequest:request];
                     return;
                 }
 
@@ -1343,6 +1421,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                errorDescription:errorDescription
                                 underlyingError:@(read_error)
                                    failureBlock:failureBlock];
+                    [weakSelf removeRequest:request];
                     return;
                 }
 
@@ -1360,6 +1439,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                errorDescription:errorDescription
                                 underlyingError:@(result)
                                    failureBlock:failureBlock];
+                    [weakSelf removeRequest:request];
                     return;
                 }
 
@@ -1378,6 +1458,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                errorDescription:errorDescription
                                 underlyingError:@(result)
                                    failureBlock:failureBlock];
+                    [weakSelf removeRequest:request];
                     return;
                 }
 
@@ -1393,6 +1474,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                errorDescription:errorDescription
                                 underlyingError:nil
                                    failureBlock:failureBlock];
+                    [weakSelf removeRequest:request];
                     return;
                 }
 
@@ -1405,6 +1487,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                         successBlock(file, startTime, finishTime);
                     });
                 }
+                [weakSelf removeRequest:request];
             }; // end of read_finished_block
 
             // dispatch this block on file io queue

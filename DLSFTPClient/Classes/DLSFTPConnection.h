@@ -102,6 +102,7 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
 - (void)disconnect;
 - (void)cancelAllRequests;
 - (BOOL)isConnected;
+- (NSUInteger)requestCount;
 
 #pragma mark Directory Operations
 
