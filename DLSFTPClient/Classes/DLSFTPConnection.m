@@ -1116,14 +1116,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             return;
         }
 
-        dispatch_group_t downloadGroup = dispatch_group_create();
-
-        // join the group from the socket queue
-        dispatch_group_enter(downloadGroup);
-        // join the group from the fileIOQueue
-        dispatch_async(_fileIOQueue, ^{
-            dispatch_group_enter(downloadGroup);
-        });
+        dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
         /* Begin dispatch io */
 
@@ -1134,7 +1127,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                                              , _fileIOQueue
                                                              , ^(int error) {
                                                                  // when the channel is cleaned up, leave the group
-                                                                 dispatch_group_leave(downloadGroup);
+                                                                 dispatch_semaphore_signal(semaphore);
                                                                  if (error) {
                                                                      printf("error in dispatch io: %d\n", error);
                                                                  }
@@ -1203,8 +1196,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
         /* End dispatch_io */
 
-        dispatch_group_leave(downloadGroup);
-        dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER);
+        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 
         // not using the cancel macro here because the progress source needs
         // to be cancelled
