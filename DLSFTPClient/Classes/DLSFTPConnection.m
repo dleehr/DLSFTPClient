@@ -1126,7 +1126,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                                              , 0
                                                              , _fileIOQueue
                                                              , ^(int error) {
-                                                                 // when the channel is cleaned up, leave the group
+                                                                 // when the channel is cleaned up, signal the semaphore
                                                                  dispatch_semaphore_signal(semaphore);
                                                                  if (error) {
                                                                      printf("error in dispatch io: %d\n", error);
