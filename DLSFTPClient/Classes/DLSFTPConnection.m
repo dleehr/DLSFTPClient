@@ -347,12 +347,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 // just if the socket is connected
 - (BOOL)isConnected {
-    __block BOOL connected = NO;
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_sync(_socketQueue, ^{
-        connected = weakSelf.socket != 0;
-    });
-    return connected;
+    return self.socket != 0;
 }
 
 - (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
