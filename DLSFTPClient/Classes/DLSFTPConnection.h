@@ -31,6 +31,12 @@
 
 #import <Foundation/Foundation.h>
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
+#define NEEDS_DISPATCH_RETAIN_RELEASE 0
+#else                                         // iOS 5.X or earlier
+#define NEEDS_DISPATCH_RETAIN_RELEASE 1
+#endif
+
 // Error Definitions
 
 extern NSString * const SFTPClientErrorDomain;

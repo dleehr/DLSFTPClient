@@ -164,6 +164,14 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 
 - (void)dealloc {
+    #if NEEDS_DISPATCH_RETAIN_RELEASE
+    dispatch_release(_requestQueue);
+    _requestQueue = NULL;
+    dispatch_release(_socketQueue);
+    _socketQueue = NULL;
+    dispatch_release(_fileIOQueue);
+    _fileIOQueue = NULL;
+    #endif
     self.sftp = NULL;
     self.session = NULL;
     [self disconnectSocket];
@@ -408,11 +416,17 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // clear out the queued success block
             weakSelf.queuedSuccessBlock = nil;
             dispatch_source_cancel(timeoutTimer);
+            #if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(timeoutTimer);
+            #endif
         });
 
         // Cancel handler for connection requests
         request.cancelHandler = ^{
             dispatch_source_cancel(timeoutTimer);
+            #if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(timeoutTimer);
+            #endif
             [weakSelf disconnect];
             [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
                        errorDescription:@"Cancelled by user"];
@@ -448,6 +462,10 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             };
             // cancel the timeout timer after connecting
             dispatch_source_cancel(timeoutTimer);
+            #if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(timeoutTimer);
+            #endif
+
             if (result == 0) {
                 // connected socket, start the SFTP session
                 [weakSelf startSFTPSessionWithRequest:request];
@@ -1181,17 +1199,27 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                           printf("error in dispatch_io_write %d\n", error);
                                       }
                                   });
+                #if NEEDS_DISPATCH_RETAIN_RELEASE
+                dispatch_release(data);
+                #endif
             } // if bytesRead is 0 or less than 0, reading is finished
         } while ((request.isCancelled == NO) && (bytesRead > 0));
 
         NSDate *finishTime = [NSDate date];
         dispatch_source_cancel(progressSource);
         dispatch_io_close(channel, 0);
+        #if NEEDS_DISPATCH_RETAIN_RELEASE
+        dispatch_release(progressSource);
+        dispatch_release(channel);
+        #endif
         channel = NULL;
 
         /* End dispatch_io */
 
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+        #if NEEDS_DISPATCH_RETAIN_RELEASE
+        dispatch_release(semaphore);
+        #endif
 
         // not using the cancel macro here because the progress source needs
         // to be cancelled
@@ -1486,6 +1514,10 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             dispatch_block_t channel_cleanup_block = ^{
                 dispatch_source_cancel(progressSource);
                 dispatch_io_close(channel, DISPATCH_IO_STOP);
+                #if NEEDS_DISPATCH_RETAIN_RELEASE
+                dispatch_release(progressSource);
+                dispatch_release(channel);
+                #endif
                 dispatch_async(_socketQueue, read_finished_block);
             }; // end channel cleanup block
 
@@ -1521,6 +1553,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                          // update shouldcontinue into the waitsocket file desctiptor
                                          waitsocket(socketFD, session);
                                      }
+                                    #if NEEDS_DISPATCH_RETAIN_RELEASE
+                                    dispatch_release(buffered_chunk_subrange);
+                                    #endif
                                      mapped_buffered_chunk_subrange = NULL;
                                      
                                      offset += bytes_read;
