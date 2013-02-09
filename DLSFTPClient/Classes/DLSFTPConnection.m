@@ -246,6 +246,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         // valid session, get the socket descriptor
         // must be called from socket's queue
         int result;
+        NSLog(@"Handshaking session");
         while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
                && request.isCancelled == NO) {
             waitsocket(socketFD, session);
@@ -403,7 +404,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         DLSFTPRequest *request = [DLSFTPRequest new];
         [self addRequest:request];
         // set up a timeout handler
-        dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
+        __block dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
         dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
         dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
         dispatch_source_set_event_handler(timeoutTimer, ^{
@@ -416,17 +417,21 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // clear out the queued success block
             weakSelf.queuedSuccessBlock = nil;
             dispatch_source_cancel(timeoutTimer);
+        });
+
+        // On cancel, release the timer if necessary
+        dispatch_source_set_cancel_handler(timeoutTimer, ^{
             #if NEEDS_DISPATCH_RETAIN_RELEASE
             dispatch_release(timeoutTimer);
             #endif
+            timeoutTimer = NULL;
         });
 
         // Cancel handler for connection requests
         request.cancelHandler = ^{
-            dispatch_source_cancel(timeoutTimer);
-            #if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(timeoutTimer);
-            #endif
+            if (timeoutTimer) {
+                dispatch_source_cancel(timeoutTimer);
+            }
             [weakSelf disconnect];
             [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
                        errorDescription:@"Cancelled by user"];
@@ -434,13 +439,15 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         };
 
         // start the timer
-        dispatch_resume(timeoutTimer);
+        if (timeoutTimer) {
+            dispatch_resume(timeoutTimer);
+        }
 
         // initialize and connect the socket on the socket queue
         dispatch_async(_socketQueue, ^{
             unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
             weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
-            if (weakSelf.socket < 0) {
+            if (weakSelf.socket <= 0) {
                 [weakSelf failWithErrorCode:eSFTPClientErrorSocketError
                            errorDescription:@"Unable to create socket"];
                 weakSelf.queuedSuccessBlock = nil;
@@ -461,11 +468,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 weakSelf.queuedSuccessBlock = nil;
             };
             // cancel the timeout timer after connecting
-            dispatch_source_cancel(timeoutTimer);
-            #if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(timeoutTimer);
-            #endif
-
+            if (timeoutTimer) {
+                dispatch_source_cancel(timeoutTimer);
+            }
             if (result == 0) {
                 // connected socket, start the SFTP session
                 [weakSelf startSFTPSessionWithRequest:request];
@@ -1042,6 +1047,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                               progressBlock:(DLSFTPClientProgressBlock)progressBlock
                                successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                                failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+    // should not be necessary to check if connected,
+    // requests should queue
     if ([self isConnected] == NO) {
         [self failWithErrorCode:eSFTPClientErrorNotConnected
                errorDescription:@"Not connected"
@@ -1076,8 +1083,15 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         int socketFD = self.socket;
         if (sftp == NULL) {
             // unable to initialize sftp
+            int lastError = libssh2_session_last_errno(session);
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:@"Unable to initialize sftp"
+                       errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
             [weakSelf removeRequest:request];
@@ -1344,8 +1358,15 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         int socketFD = self.socket;
         if (sftp == NULL) {
             // unable to initialize sftp
+            int lastError = libssh2_session_last_errno(session);
+            char *errmsg = NULL;
+            int errmsg_len = 0;
+            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
+            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
+                                          , errmsg
+                                          , lastError];
             [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:@"Unable to initialize sftp"
+                       errorDescription:errorDescription
                         underlyingError:nil
                            failureBlock:failureBlock];
             [weakSelf removeRequest:request];
