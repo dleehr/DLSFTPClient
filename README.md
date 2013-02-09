@@ -4,7 +4,12 @@ SFTP Client library and sample app for iOS, using libssh2
 
 ## Overview
 
-DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access to upload and download files, as well as perform directory operations.  It requires iOS 5.1 and leverages Grand Central Dispatch (libdispatch) heavily.
+DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access to upload and download files, as well as perform directory operations.  It requires iOS 5.1.  
+
+## Status
+
+DLSFTPClient is a work in progress.  The API is subject to change, and there is still much to do, so I do not recommend using it in a shipping app.  It's proven a good way to learn a lot of [Grand Central Dispatch](https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html).
+
 
 ## Sample Usage
 
@@ -42,7 +47,7 @@ Blocks are dispatched to the global concurrent queue.
 
 ## To-do
 
-Quite a bit.  DLSFTPClient is still a work-in-progress, and the API is still subject to change.
+Quite a bit, including writing a proper To-do list here.
 
 ## Project Dependencies
 
