@@ -1146,19 +1146,25 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
         /* Begin dispatch io */
+        __block dispatch_io_t channel;
+        void(^cleanup_handler)(int) = ^(int error) {
+            if (error) {
+                printf("Error creating channel: %d", error);
+            }
+            printf("cleaning up channel\n");
+            #if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(channel);
+            #endif
+            dispatch_semaphore_signal(semaphore);
+        };
 
-        dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
-                                                             , [localPath UTF8String]
-                                                             , (O_WRONLY | O_CREAT | O_TRUNC)
-                                                             , 0
-                                                             , _fileIOQueue
-                                                             , ^(int error) {
-                                                                 // when the channel is cleaned up, signal the semaphore
-                                                                 dispatch_semaphore_signal(semaphore);
-                                                                 if (error) {
-                                                                     printf("error in dispatch io: %d\n", error);
-                                                                 }
-                                                             });
+        channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
+                                               , [localPath UTF8String]
+                                               , (O_WRONLY | O_CREAT | O_TRUNC)
+                                               , 0
+                                               , _fileIOQueue
+                                               , cleanup_handler
+                                               );
         if (channel == NULL) {
             // Error creating the channel
             NSString *errorDescription = [NSString stringWithFormat:@"Unable to create a channel for writing to %@", localPath];
@@ -1179,6 +1185,11 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             if (progressBlock) {
                 progressBlock(bytesReceived, filesize);
             }
+        });
+        dispatch_source_set_cancel_handler(progressSource, ^{
+#if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(progressSource);
+#endif
         });
 
         char buffer[cBufferSize];
@@ -1222,11 +1233,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         NSDate *finishTime = [NSDate date];
         dispatch_source_cancel(progressSource);
         dispatch_io_close(channel, 0);
-        #if NEEDS_DISPATCH_RETAIN_RELEASE
-        dispatch_release(progressSource);
-        dispatch_release(channel);
-        #endif
-        channel = NULL;
 
         /* End dispatch_io */
 
@@ -1406,16 +1412,24 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
         // jump to the file IO queue
         dispatch_async(_fileIOQueue, ^{
+            __block dispatch_io_t channel;
             void(^cleanup_handler)(int) = ^(int error) {
+                if (error) {
+                    printf("Error creating channel: %d", error);
+                }
+                printf("cleaning up channel");
+                #if NEEDS_DISPATCH_RETAIN_RELEASE
+                dispatch_release(channel);
+                #endif
             };
 
-            dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
-                                                                 , [localPath UTF8String]
-                                                                 , O_RDONLY
-                                                                 , 0
-                                                                 , _fileIOQueue
-                                                                 , cleanup_handler
-                                                                 );
+            channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
+                                                   , [localPath UTF8String]
+                                                   , O_RDONLY
+                                                   , 0
+                                                   , _fileIOQueue
+                                                   , cleanup_handler
+                                                   );
 
             // dispatch source to invoke progress handler block
 
@@ -1427,6 +1441,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 if (progressBlock) {
                     progressBlock(totalBytesSent, filesize);
                 }
+            });
+
+            dispatch_source_set_cancel_handler(progressSource, ^{
+#if NEEDS_DISPATCH_RETAIN_RELEASE
+                dispatch_release(progressSource);
+#endif
             });
 
             dispatch_resume(progressSource);
@@ -1535,10 +1555,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             dispatch_block_t channel_cleanup_block = ^{
                 dispatch_source_cancel(progressSource);
                 dispatch_io_close(channel, DISPATCH_IO_STOP);
-                #if NEEDS_DISPATCH_RETAIN_RELEASE
-                dispatch_release(progressSource);
-                dispatch_release(channel);
-                #endif
                 dispatch_async(_socketQueue, read_finished_block);
             }; // end channel cleanup block
 
