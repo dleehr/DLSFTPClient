@@ -8,7 +8,7 @@ DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access
 
 ## Status
 
-DLSFTPClient is a work in progress.  The API is subject to change, and there is still much to do, so I do not recommend using it in a shipping app.  It's proven a good way to learn a lot of [Grand Central Dispatch](https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html).
+DLSFTPClient is a work in progress.  The API is subject to change, and there is still much to do, so I do not recommend using it in a shipping app.  However, it's been a good way to learn a lot of [Grand Central Dispatch](https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html).
 
 
 ## Sample Usage
