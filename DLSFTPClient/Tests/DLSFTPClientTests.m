@@ -426,4 +426,31 @@
     STAssertEquals(localError.code, eSFTPClientErrorCancelledByUser, @"Expecting cancelled by user but got other error");
 }
 
+- (void)test11QueuedOperation {
+    STAssertFalse([self.connection isConnected], @"Connection must not be connected");
+    __block NSError *localError = nil;
+    [self.connection connectWithSuccessBlock:^{
+    } failureBlock:^(NSError *error) {
+        localError = error;
+    }];
+    NSString *basePath = self.connectionInfo[@"basePath"];
+    NSString *fileName = [self.testFilePath lastPathComponent];
+    NSString *remotePath = [basePath stringByAppendingPathComponent:fileName];
+    NSString *localFileName = [NSString stringWithFormat:@"testfile-%f.jpg", [[NSDate date] timeIntervalSince1970]];
+
+    NSString *localPath = [NSTemporaryDirectory() stringByAppendingPathComponent:localFileName];
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    [self.connection downloadFileAtRemotePath:remotePath
+                                  toLocalPath:localPath
+                                progressBlock:^(unsigned long long bytesReceived, unsigned long long bytesTotal) {
+                                } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                    dispatch_semaphore_signal(semaphore);
+                                } failureBlock:^(NSError *error) {
+                                    localError = error;
+                                    dispatch_semaphore_signal(semaphore);
+                                }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+    STAssertNil(localError, localError.localizedDescription);
+}
+
 @end
