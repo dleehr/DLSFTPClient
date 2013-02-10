@@ -307,7 +307,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         if (libssh2_userauth_authenticated(session) == 0) {
             // authentication failed
             // disconnect to disconnect/free the session and close the socket
-            [self disconnect];
+            [weakSelf disconnectSocket];
+            weakSelf.sftp = NULL;
+            weakSelf.session = NULL;
             NSString *errorDescription = [NSString stringWithFormat:@"Authentication failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
@@ -438,7 +440,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             if (timeoutTimer) {
                 dispatch_source_cancel(timeoutTimer);
             }
-            [weakSelf disconnect];
+            [weakSelf disconnectSocket];
+            weakSelf.sftp = NULL;
+            weakSelf.session = NULL;
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
                                  errorDescription:@"Cancelled by user"];
             weakSelf.queuedSuccessBlock = nil;
@@ -468,7 +472,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // connected, remove timeout operations
             // The request cancel handler should not cancel the timeout timer from here on out
             request.cancelHandler = ^{
-                [weakSelf disconnect];
+                [weakSelf disconnectSocket];
+                weakSelf.sftp = NULL;
+                weakSelf.session = NULL;
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
                                      errorDescription:@"Cancelled by user"];
                 weakSelf.queuedSuccessBlock = nil;
