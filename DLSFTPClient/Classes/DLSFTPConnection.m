@@ -99,6 +99,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
     // request queue
     dispatch_queue_t _requestQueue;
+
+    // connection group
+    dispatch_group_t _connectionGroup;
 }
 
 // These blocks are only used for connection operation, name them so
@@ -159,6 +162,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
         _requestQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.request", DISPATCH_QUEUE_CONCURRENT);
+        _connectionGroup = dispatch_group_create();
     }
     return self;
 }
@@ -171,6 +175,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     _socketQueue = NULL;
     dispatch_release(_fileIOQueue);
     _fileIOQueue = NULL;
+    dispatch_release(_connectionGroup);
+    _connectionGroup = NULL;
     #endif
     self.sftp = NULL;
     self.session = NULL;
@@ -229,17 +235,17 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 - (void)startSFTPSessionWithRequest:(DLSFTPRequest *)request {
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue, ^{
+    dispatch_group_async(_connectionGroup,_socketQueue, ^{
         int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
 
         if (session == NULL) { // unable to access the session
             // close the socket
-            [self disconnectSocket];
+            [weakSelf disconnectSocket];
             // unable to initialize session
-            [self failWithErrorCode:eSFTPClientErrorUnableToInitializeSession
+            [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToInitializeSession
                    errorDescription:@"Unable to initialize libssh2 session"];
-            self.queuedSuccessBlock = nil;
+            weakSelf.queuedSuccessBlock = nil;
             [weakSelf removeRequest:request];
             return;
         }
@@ -254,17 +260,17 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         if (result) {
             // handshake failed
             // free the session and close the socket
-            [self disconnectSocket];
+            [weakSelf disconnectSocket];
 
             NSString *errorDescription = [NSString stringWithFormat:@"Handshake failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorHandshakeFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
-            if (self.queuedFailureBlock) {
+            if (weakSelf.queuedFailureBlock) {
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    self.queuedFailureBlock(error);
-                    self.queuedFailureBlock = nil;
-                    self.queuedSuccessBlock = nil;
+                    weakSelf.queuedFailureBlock(error);
+                    weakSelf.queuedFailureBlock = nil;
+                    weakSelf.queuedSuccessBlock = nil;
                 });
             }
             [weakSelf removeRequest:request];
@@ -306,11 +312,11 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
-            if (self.queuedFailureBlock) {
+            if (weakSelf.queuedFailureBlock) {
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    self.queuedFailureBlock(error);
-                    self.queuedFailureBlock = nil;
-                    self.queuedSuccessBlock = nil;
+                    weakSelf.queuedFailureBlock(error);
+                    weakSelf.queuedFailureBlock = nil;
+                    weakSelf.queuedSuccessBlock = nil;
                 });
             }
             [weakSelf removeRequest:request];
@@ -320,9 +326,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         // authentication succeeded
         // session is now created and we can use it
         if (self.queuedSuccessBlock) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), self.queuedSuccessBlock);
-            self.queuedSuccessBlock = nil;
-            self.queuedFailureBlock = nil;
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), weakSelf.queuedSuccessBlock);
+            weakSelf.queuedSuccessBlock = nil;
+            weakSelf.queuedFailureBlock = nil;
         }
         [weakSelf removeRequest:request];
         return;
@@ -359,7 +365,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     return self.socket != 0;
 }
 
-- (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
+- (void)failConnectionWithErrorCode:(eSFTPClientErrorCode)errorCode
          errorDescription:(NSString *)errorDescription {
     NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                          code:errorCode
@@ -379,22 +385,22 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                               failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     if (self.queuedSuccessBlock) {
         // last connection not yet connected
-        [self failWithErrorCode:eSFTPClientErrorOperationInProgress
-               errorDescription:@"Operation in progress"];
+        [self failConnectionWithErrorCode:eSFTPClientErrorOperationInProgress
+                         errorDescription:@"Operation in progress"];
         return nil;
     } else if (   ([self.hostname length] == 0)
                || ([self.username length] == 0)
                || ([self.password length] == 0)
                || (self.port == 0)) {
             // don't have valid arguments
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Invalid arguments"];
+        [self failConnectionWithErrorCode:eSFTPClientErrorInvalidArguments
+                         errorDescription:@"Invalid arguments"];
         return nil;
     } else if(self.socket) {
         // already have a socket
         // last connection not yet connected
-        [self failWithErrorCode:eSFTPClientErrorAlreadyConnected
-               errorDescription:@"Already connected"];
+        [self failConnectionWithErrorCode:eSFTPClientErrorAlreadyConnected
+                         errorDescription:@"Already connected"];
         return nil;
     } else {
         self.queuedSuccessBlock = successBlock;
@@ -412,8 +418,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // timeout fired, close the socket
             [weakSelf disconnectSocket]; // closes on socketQueue
             // and fail
-            [weakSelf failWithErrorCode:eSFTPClientErrorConnectionTimedOut
-                       errorDescription:@"Connection timed out"];
+            [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
+                                 errorDescription:@"Connection timed out"];
             // clear out the queued success block
             weakSelf.queuedSuccessBlock = nil;
             dispatch_source_cancel(timeoutTimer);
@@ -433,8 +439,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 dispatch_source_cancel(timeoutTimer);
             }
             [weakSelf disconnect];
-            [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
-                       errorDescription:@"Cancelled by user"];
+            [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
+                                 errorDescription:@"Cancelled by user"];
             weakSelf.queuedSuccessBlock = nil;
         };
 
@@ -444,12 +450,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         }
 
         // initialize and connect the socket on the socket queue
-        dispatch_async(_socketQueue, ^{
+        dispatch_group_async(_connectionGroup, _socketQueue, ^{
             unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
             weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
             if (weakSelf.socket <= 0) {
-                [weakSelf failWithErrorCode:eSFTPClientErrorSocketError
-                           errorDescription:@"Unable to create socket"];
+                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
+                                     errorDescription:@"Unable to create socket"];
                 weakSelf.queuedSuccessBlock = nil;
                 return;
             }
@@ -463,8 +469,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // The request cancel handler should not cancel the timeout timer from here on out
             request.cancelHandler = ^{
                 [weakSelf disconnect];
-                [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
-                           errorDescription:@"Cancelled by user"];
+                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
+                                     errorDescription:@"Cancelled by user"];
                 weakSelf.queuedSuccessBlock = nil;
             };
             // cancel the timeout timer after connecting
@@ -476,8 +482,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 [weakSelf startSFTPSessionWithRequest:request];
             } else {
                 NSString *errorDescription = [NSString stringWithFormat:@"Unable to connect: socket error: %d", result];
-                [weakSelf failWithErrorCode:eSFTPClientErrorUnableToConnect
-                           errorDescription:errorDescription];
+                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
+                                     errorDescription:errorDescription];
                 weakSelf.queuedSuccessBlock = nil;
                 [weakSelf removeRequest:request];
                 return;
@@ -536,19 +542,19 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
                            successBlock:(DLSFTPClientArraySuccessBlock)successBlock
                            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Socket not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue,^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
+
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
         int socketFD = self.socket;
@@ -683,19 +689,18 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     }
 
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Socket not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue,^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
         int socketFD = self.socket;
@@ -792,19 +797,19 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     }
 
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Socket not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue,^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
+
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
         int socketFD = self.socket;
@@ -896,19 +901,19 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     }
 
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Socket not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue,^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
+
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
         int socketFD = self.socket;
@@ -974,19 +979,19 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     }
 
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Socket not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue,^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
+
         LIBSSH2_SESSION *session = self.session;
         LIBSSH2_SFTP *sftp = self.sftp;
         int socketFD = self.socket;
@@ -1047,21 +1052,18 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                               progressBlock:(DLSFTPClientProgressBlock)progressBlock
                                successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                                failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    // should not be necessary to check if connected,
-    // requests should queue
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue, ^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
         // create file if it does not exist
         if ([[NSFileManager defaultManager] fileExistsAtPath:localPath] == NO) {
             [[NSFileManager defaultManager] createFileAtPath:localPath
@@ -1310,13 +1312,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                             progressBlock:(DLSFTPClientProgressBlock)progressBlock
                              successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if ([self isConnected] == NO) {
-        [self failWithErrorCode:eSFTPClientErrorNotConnected
-               errorDescription:@"Not connected"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
     if (remotePath == nil) {
         [self failWithErrorCode:eSFTPClientErrorInvalidArguments
                errorDescription:@"Remote path not specified"
@@ -1335,8 +1330,15 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_async(_socketQueue, ^{
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        if ([weakSelf isConnected] == NO) {
+            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
+                       errorDescription:@"Socket not connected"
+                        underlyingError:nil
+                           failureBlock:failureBlock];
+            [weakSelf removeRequest:request];
+        }
         // verify local file is readable prior to upload
         if ([[NSFileManager defaultManager] isReadableFileAtPath:localPath] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenLocalFileForReading
