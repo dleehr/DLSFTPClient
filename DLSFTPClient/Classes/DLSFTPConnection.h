@@ -102,6 +102,17 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
               username:(NSString *)username
               password:(NSString *)password;
 
+- (id)initWithHostname:(NSString *)hostname
+                  port:(NSUInteger)port
+              username:(NSString *)username
+               keypath:(NSString *)keypath
+            passphrase:(NSString *)passphrase;
+
+- (id)initWithHostname:(NSString *)hostname
+              username:(NSString *)username
+               keypath:(NSString *)keypath
+            passphrase:(NSString *)passphrase;
+
 - (DLSFTPRequest *)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
                               failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 

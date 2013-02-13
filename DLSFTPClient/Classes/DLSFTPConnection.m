@@ -110,6 +110,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 @property (nonatomic, copy) NSString *username;
 @property (nonatomic, copy) NSString *password;
+@property (nonatomic, copy) NSString *keypath;
 @property (nonatomic, copy) NSString *hostname;
 @property (nonatomic, assign) NSUInteger port;
 
@@ -144,19 +145,58 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     return [self initWithHostname:hostname
                              port:cDefaultSSHPort
                          username:username
-                         password:password];
+                         password:password
+                          keypath:nil];
 }
 
 - (id)initWithHostname:(NSString *)hostname
                   port:(NSUInteger)port
               username:(NSString *)username
               password:(NSString *)password {
+    return [self initWithHostname:hostname
+                             port:port
+                         username:username
+                         password:password
+                          keypath:nil];
+}
+
+- (id)initWithHostname:(NSString *)hostname
+              username:(NSString *)username
+               keypath:(NSString *)keypath
+            passphrase:(NSString *)passphrase {
+
+    return [self initWithHostname:hostname
+                             port:cDefaultSSHPort
+                         username:username
+                         password:passphrase
+                          keypath:keypath];
+}
+
+- (id)initWithHostname:(NSString *)hostname
+                  port:(NSUInteger)port
+              username:(NSString *)username
+               keypath:(NSString *)keypath
+            passphrase:(NSString *)passphrase {
+    return [self initWithHostname:hostname
+                             port:port
+                         username:username
+                         password:passphrase
+                          keypath:keypath];
+}
+
+
+- (id)initWithHostname:(NSString *)hostname
+                  port:(NSUInteger)port
+              username:(NSString *)username
+              password:(NSString *)password
+               keypath:(NSString *)keypath {
     self = [super init];
     if (self) {
         self.hostname = hostname;
         self.port = port;
         self.username = username;
         self.password = password;
+        self.keypath = keypath;
         self.socket = 0;
         self.requests = [[NSMutableArray alloc] init];
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
@@ -305,8 +345,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             waitsocket(socketFD, session);
         }
 
-        // TODO: enable key-based authentication
-        if (authmethods && strstr(authmethods, "password")) {
+        if (authmethods && strstr(authmethods, "publickey") && self.keypath) {
+            while (   (result = libssh2_userauth_publickey_fromfile(session, [self.username UTF8String], NULL, [self.keypath UTF8String], [self.password UTF8String]) == LIBSSH2_ERROR_EAGAIN)
+                   && request.isCancelled == NO) {
+                waitsocket(socketFD, session);
+            }
+        } else if (authmethods && strstr(authmethods, "password")) {
             while (   (result = libssh2_userauth_password(session, [self.username UTF8String], [self.password UTF8String]) == LIBSSH2_ERROR_EAGAIN)
                    && request.isCancelled == NO) {
                 waitsocket(socketFD, session);
@@ -406,7 +450,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         return nil;
     } else if (   ([self.hostname length] == 0)
                || ([self.username length] == 0)
-               || ([self.password length] == 0)
+               || ([self.password length] == 0 && [self.keypath length] == 0)
                || (self.port == 0)) {
             // don't have valid arguments
         [self failConnectionWithErrorCode:eSFTPClientErrorInvalidArguments
