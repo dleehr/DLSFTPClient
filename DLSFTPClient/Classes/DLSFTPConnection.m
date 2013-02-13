@@ -178,9 +178,17 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     dispatch_release(_connectionGroup);
     _connectionGroup = NULL;
     #endif
-    self.sftp = NULL;
-    self.session = NULL;
     [self disconnectSocket];
+}
+
+- (dispatch_queue_t)socketQueue {
+    return _socketQueue;
+}
+- (dispatch_queue_t)fileIOQueue {
+    return _fileIOQueue;
+}
+- (dispatch_queue_t)requestQueue {
+    return _requestQueue;
 }
 
 - (void)setSession:(LIBSSH2_SESSION *)session {
@@ -188,7 +196,13 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     if (_session) {
         // check if _sftp exists
         self.sftp = NULL;
-        libssh2_session_free(_session);
+        while (libssh2_session_disconnect(_session, "") == LIBSSH2_ERROR_EAGAIN) {
+            waitsocket(self.socket, _session);
+        }
+        while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
+            waitsocket(self.socket, _session);
+        }
+        _session = NULL;
     }
     _session = session;
 }
@@ -229,6 +243,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 #pragma mark - Private
 
 - (void)disconnectSocket {
+    self.sftp = NULL;
+    self.session = NULL;
     close(self.socket);
     self.socket = 0;
 }
@@ -308,8 +324,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // authentication failed
             // disconnect to disconnect/free the session and close the socket
             [weakSelf disconnectSocket];
-            weakSelf.sftp = NULL;
-            weakSelf.session = NULL;
             NSString *errorDescription = [NSString stringWithFormat:@"Authentication failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
@@ -418,7 +432,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         dispatch_source_set_event_handler(timeoutTimer, ^{
             NSLog(@"timeout Timer fired, disconnecting socket");
             // timeout fired, close the socket
-            [weakSelf disconnectSocket]; // closes on socketQueue
+            dispatch_sync([weakSelf socketQueue], ^{
+                [weakSelf disconnectSocket]; // closes on socketQueue
+            });
             // and fail
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
                                  errorDescription:@"Connection timed out"];
@@ -440,9 +456,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             if (timeoutTimer) {
                 dispatch_source_cancel(timeoutTimer);
             }
-            [weakSelf disconnectSocket];
-            weakSelf.sftp = NULL;
-            weakSelf.session = NULL;
+            dispatch_sync([weakSelf socketQueue], ^{
+                [weakSelf disconnectSocket];
+            });
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
                                  errorDescription:@"Cancelled by user"];
             weakSelf.queuedSuccessBlock = nil;
@@ -472,9 +488,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // connected, remove timeout operations
             // The request cancel handler should not cancel the timeout timer from here on out
             request.cancelHandler = ^{
-                [weakSelf disconnectSocket];
-                weakSelf.sftp = NULL;
-                weakSelf.session = NULL;
+                dispatch_sync([weakSelf socketQueue], ^{
+                    [weakSelf disconnectSocket];
+                });
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
                                      errorDescription:@"Cancelled by user"];
                 weakSelf.queuedSuccessBlock = nil;
@@ -502,8 +518,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (void)disconnect {
     [self cancelAllRequests];
     dispatch_sync(_socketQueue, ^{
-        self.sftp = NULL;
-        self.session = NULL;
         [self disconnectSocket];
     });
 }
