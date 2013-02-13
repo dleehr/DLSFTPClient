@@ -1055,6 +1055,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 - (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
                                 toLocalPath:(NSString *)localPath
+                                     resume:(BOOL)resume
                               progressBlock:(DLSFTPClientProgressBlock)progressBlock
                                successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                                failureBlock:(DLSFTPClientFailureBlock)failureBlock {
@@ -1070,11 +1071,30 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                            failureBlock:failureBlock];
             [weakSelf removeRequest:request];
         }
-        // create file if it does not exist
+        unsigned long long resumeOffset = 0ull;
         if ([[NSFileManager defaultManager] fileExistsAtPath:localPath] == NO) {
+            // File does not exist, create it
             [[NSFileManager defaultManager] createFileAtPath:localPath
                                                     contents:nil
                                                   attributes:nil];
+        } else {
+            // File exists, get existing size
+            // Check existing size
+            NSError *error = nil;
+            NSDictionary *localAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:localPath
+                                                                                             error:&error];
+            if (error) {
+                [weakSelf failWithErrorCode:eSFTPClientErrorUnableToReadFile
+                           errorDescription:@"Unable to get attributes (file size) of existing file"
+                            underlyingError:@(error.code)
+                               failureBlock:failureBlock];
+                [weakSelf removeRequest:request];
+                return;
+            }
+            
+            if(resume) {
+                resumeOffset = [localAttributes fileSize];
+            }
         }
 
         if ([[NSFileManager defaultManager] isWritableFileAtPath:localPath] == NO) {
@@ -1151,6 +1171,10 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             return;
         }
 
+        if (resume) {
+            libssh2_sftp_seek64(handle, resumeOffset);
+        }
+
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
         /* Begin dispatch io */
@@ -1166,9 +1190,20 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             dispatch_semaphore_signal(semaphore);
         };
 
+        int oflag;
+        if (resume) {
+            oflag =   O_APPEND
+                    | O_WRONLY
+                    | O_CREAT;
+        } else {
+            oflag =   O_WRONLY
+                    | O_CREAT
+                    | O_TRUNC;
+        }
+
         channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
                                                , [localPath UTF8String]
-                                               , (O_WRONLY | O_CREAT | O_TRUNC)
+                                               , oflag
                                                , 0
                                                , _fileIOQueue
                                                , cleanup_handler
@@ -1186,7 +1221,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
         // dispatch source to invoke progress handler block
         dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-        __block unsigned long long bytesReceived = 0ull;
+        __block unsigned long long bytesReceived = resumeOffset;
         unsigned long long filesize = attributes.filesize;
         dispatch_source_set_event_handler(progressSource, ^{
                 bytesReceived += dispatch_source_get_data(progressSource);
@@ -1257,10 +1292,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 waitsocket(socketFD, session);
             }
 
-            // delete the file
-            NSError __autoreleasing *deleteError = nil;
-            if([[NSFileManager defaultManager] removeItemAtPath:localPath error:&deleteError] == NO) {
-                NSLog(@"Unable to delete unfinished file: %@", deleteError);
+            // delete the file if not resumable
+            if (resume == NO) {
+                NSError __autoreleasing *deleteError = nil;
+                if([[NSFileManager defaultManager] removeItemAtPath:localPath error:&deleteError] == NO) {
+                    NSLog(@"Unable to delete unfinished file: %@", deleteError);
+                }
             }
 
             [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser

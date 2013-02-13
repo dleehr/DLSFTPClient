@@ -137,11 +137,12 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
 
 
 #pragma mark File Transfer
-// progressBlock uses dispatch_source_merge_data and will be queued on main thread.
+// progressBlock uses dispatch_source_merge_data.
 // It may not reach 100%, intended to be used for UI updates only
 
 - (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
                                 toLocalPath:(NSString *)localPath
+                                     resume:(BOOL)resume
                               progressBlock:(DLSFTPClientProgressBlock)progressBlock
                                successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                                failureBlock:(DLSFTPClientFailureBlock)failureBlock;

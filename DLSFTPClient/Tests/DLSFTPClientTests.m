@@ -250,6 +250,7 @@
 
     [self.connection downloadFileAtRemotePath:remotePath
                                   toLocalPath:localPath
+                                       resume:NO
                                 progressBlock:nil
                                  successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                     dispatch_semaphore_signal(semaphore);
@@ -408,6 +409,7 @@
     __block DLSFTPRequest *request = nil;
     request = [self.connection downloadFileAtRemotePath:remotePath
                                             toLocalPath:localPath
+                                                 resume:NO
                                           progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
                                               STAssertFalse(request.isCancelled, @"Progress block called with cancelled request");
                                               // cancel at 50%
@@ -442,6 +444,7 @@
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     [self.connection downloadFileAtRemotePath:remotePath
                                   toLocalPath:localPath
+                                       resume:NO
                                 progressBlock:^(unsigned long long bytesReceived, unsigned long long bytesTotal) {
                                 } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                     dispatch_semaphore_signal(semaphore);

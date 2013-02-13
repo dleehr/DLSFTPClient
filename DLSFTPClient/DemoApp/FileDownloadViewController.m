@@ -229,6 +229,7 @@
 
     self.request = [self.connection downloadFileAtRemotePath:remotePath
                                                  toLocalPath:[DLDocumentsDirectoryPath() stringByAppendingPathComponent:self.file.filename]
+                                                      resume:NO
                                                progressBlock:progressBlock
                                                 successBlock:successBlock
                                                 failureBlock:failureBlock];
