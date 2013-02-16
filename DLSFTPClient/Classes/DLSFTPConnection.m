@@ -197,7 +197,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         self.username = username;
         self.password = password;
         self.keypath = keypath;
-        self.socket = 0;
+        self.socket = -1;
         self.requests = [[NSMutableArray alloc] init];
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
@@ -285,8 +285,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (void)disconnectSocket {
     self.sftp = NULL;
     self.session = NULL;
-    close(self.socket);
-    self.socket = 0;
+    if (self.socket >= 0) {
+        if(close(self.socket) == -1) {
+            NSLog(@"Error closing socket: %d", errno);
+        }
+        self.socket = -1;
+    }
 }
 
 - (void)startSFTPSessionWithRequest:(DLSFTPRequest *)request {
@@ -422,7 +426,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 // just if the socket is connected
 - (BOOL)isConnected {
-    return self.socket != 0;
+    return self.socket >= 0;
 }
 
 - (void)failConnectionWithErrorCode:(eSFTPClientErrorCode)errorCode
@@ -456,7 +460,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         [self failConnectionWithErrorCode:eSFTPClientErrorInvalidArguments
                          errorDescription:@"Invalid arguments"];
         return nil;
-    } else if(self.socket) {
+    } else if(self.socket >= 0) {
         // already have a socket
         // last connection not yet connected
         [self failConnectionWithErrorCode:eSFTPClientErrorAlreadyConnected
@@ -517,7 +521,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         dispatch_group_async(_connectionGroup, _socketQueue, ^{
             unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
             weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
-            if (weakSelf.socket <= 0) {
+            if (weakSelf.socket == -1) {
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
                                      errorDescription:@"Unable to create socket"];
                 weakSelf.queuedSuccessBlock = nil;
