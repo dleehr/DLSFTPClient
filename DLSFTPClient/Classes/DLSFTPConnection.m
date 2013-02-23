@@ -1141,7 +1141,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                                   attributes:nil];
         } else {
             // File exists, get existing size
-            // Check existing size
             NSError *error = nil;
             NSDictionary *localAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:localPath
                                                                                              error:&error];
@@ -1188,9 +1187,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             return;
         }
 
-        // sftp is now valid
-        // get a file handle for the file to download
-        // TODO: resumable downloads
+        // sftp is now valid, get a file handle for the file to download
         LIBSSH2_SFTP_HANDLE *handle = NULL;
         while (   (handle = libssh2_sftp_open(sftp, [remotePath UTF8String], LIBSSH2_FXF_READ, 0)) == NULL
                && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)
