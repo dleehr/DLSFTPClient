@@ -88,6 +88,15 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     return; \
 }
 
+#define CHECK_PATH(path) if ([path length] == 0) { \
+    [weakSelf failWithErrorCode:eSFTPClientErrorInvalidArguments \
+               errorDescription:@"Invalid path" \
+                underlyingError:nil \
+                   failureBlock:failureBlock]; \
+    [weakSelf removeRequest:request]; \
+    return; \
+}
+
 
 @interface DLSFTPConnection () {
 
@@ -615,6 +624,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(directoryPath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -749,19 +759,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
                     successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
                     failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if ([directoryPath length] == 0) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Directory name is empty"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(directoryPath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -856,20 +859,13 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
                                    failureBlock:(DLSFTPClientFailureBlock)failureBlock {
 
-    if (   ([remotePath length] == 0)
-        || ([newPath length] == 0)) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Renaming path is empty"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(remotePath)
+        CHECK_PATH(newPath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -961,19 +957,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
                        successBlock:(DLSFTPClientSuccessBlock)successBlock
                        failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if ([remotePath length] == 0) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Path to remove is empty"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(remotePath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -1039,19 +1028,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
                             successBlock:(DLSFTPClientSuccessBlock)successBlock
                             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if ([remotePath length] == 0) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Path to remove is empty"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(remotePath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -1126,6 +1108,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(localPath)
+        CHECK_PATH(remotePath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
@@ -1321,7 +1305,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                                   , _fileIOQueue // just for reporting the below block
                                   , ^(bool done, dispatch_data_t data, int error) {
                                       // done refers to the chunk of data written
-                                      // TODO: consider moving progress reporting here
+                                      // Tried moving progress reporting here, didn't make much difference
                                       if (error) {
                                           printf("error in dispatch_io_write %d\n", error);
                                       }
@@ -1414,26 +1398,13 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                             progressBlock:(DLSFTPClientProgressBlock)progressBlock
                              successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if (remotePath == nil) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Remote path not specified"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-    if (localPath == nil) {
-        [self failWithErrorCode:eSFTPClientErrorInvalidArguments
-               errorDescription:@"Local path not specified"
-                underlyingError:nil
-                   failureBlock:failureBlock];
-        return nil;
-    }
-
     DLSFTPRequest *request = [DLSFTPRequest request];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         CHECK_REQUEST_CANCELLED
+        CHECK_PATH(remotePath)
+        CHECK_PATH(localPath)
         if ([weakSelf isConnected] == NO) {
             [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
                        errorDescription:@"Socket not connected"
