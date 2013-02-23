@@ -1226,7 +1226,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             if (error) {
                 printf("Error creating channel: %d", error);
             }
-            printf("cleaning up channel\n");
+            NSLog(@"finished writing file for download, cleaning up channel");
             #if NEEDS_DISPATCH_RETAIN_RELEASE
             dispatch_release(channel);
             #endif
@@ -1492,7 +1492,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
                 if (error) {
                     printf("Error creating channel: %d", error);
                 }
-                printf("cleaning up channel");
+                NSLog(@"finished reading file for upload, cleaning up channel");
                 #if NEEDS_DISPATCH_RETAIN_RELEASE
                 dispatch_release(channel);
                 #endif
