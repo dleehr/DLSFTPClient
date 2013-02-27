@@ -314,7 +314,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 #pragma mark - Private
 
 - (void)disconnectSocket {
-    [self cancelIdleTimer];
+    if (_idleTimer) { // avoid cancelling after dealloc
+        [self cancelIdleTimer];
+    }
     self.sftp = NULL;
     self.session = NULL;
     if (self.socket >= 0) {
@@ -453,12 +455,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (void)startIdleTimer {
     // restart the timer, by setting its fire time and repeat interval
     dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cIdleTimeout * NSEC_PER_SEC);
-    dispatch_source_set_timer(_idleTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+    dispatch_source_set_timer([self idleTimer], fireTime, DISPATCH_TIME_FOREVER, 0);
 }
 
 - (void)cancelIdleTimer {
     // set the fire time to forever
-    dispatch_source_set_timer(_idleTimer, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
+    dispatch_source_set_timer([self idleTimer], DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
 }
 
 #pragma mark Public
