@@ -45,6 +45,7 @@ NSString * const SFTPClientUnderlyingErrorKey = @"SFTPClientUnderlyingError";
 
 static const NSUInteger cDefaultSSHPort = 22;
 static const NSTimeInterval cDefaultConnectionTimeout = 15.0;
+static const NSTimeInterval cIdleTimeout = 60.0;
 static const size_t cBufferSize = 8192;
 
 #import "DLSFTPConnection.h"
@@ -111,6 +112,9 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
     // connection group
     dispatch_group_t _connectionGroup;
+
+    // idle timer
+    dispatch_source_t _idleTimer;
 }
 
 // These blocks are only used for connection operation, name them so
@@ -127,10 +131,11 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
-// Request handling, private
+// Request handling
 @property (nonatomic, strong) NSMutableArray *requests;
 - (void)addRequest:(DLSFTPRequest *)request;
 - (void)removeRequest:(DLSFTPRequest *)request;
+
 @end
 
 
@@ -212,6 +217,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
         _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
         _requestQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.request", DISPATCH_QUEUE_CONCURRENT);
         _connectionGroup = dispatch_group_create();
+        _idleTimer = NULL; // lazily loaded
     }
     return self;
 }
@@ -226,6 +232,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     _fileIOQueue = NULL;
     dispatch_release(_connectionGroup);
     _connectionGroup = NULL;
+    dispatch_release(_idleTimer);
+    _idleTimer = NULL;
     #endif
     [self disconnectSocket];
 }
@@ -238,6 +246,20 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 - (dispatch_queue_t)requestQueue {
     return _requestQueue;
+}
+
+- (dispatch_source_t)idleTimer {
+    if (_idleTimer == NULL) {
+        _idleTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _socketQueue);
+        dispatch_source_set_timer(_idleTimer, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
+        __weak DLSFTPConnection *weakSelf = self;
+        dispatch_source_set_event_handler(_idleTimer, ^{
+            [weakSelf disconnect];
+            [weakSelf cancelIdleTimer];
+        });
+        dispatch_resume(_idleTimer);
+    }
+    return _idleTimer;
 }
 
 - (void)setSession:(LIBSSH2_SESSION *)session {
@@ -292,6 +314,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 #pragma mark - Private
 
 - (void)disconnectSocket {
+    [self cancelIdleTimer];
     self.sftp = NULL;
     self.session = NULL;
     if (self.socket >= 0) {
@@ -412,6 +435,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests addObject:request];
+        [weakSelf cancelIdleTimer];
     });
 }
 
@@ -419,10 +443,36 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests removeObject:request];
+        if ([weakSelf.requests count] == 0) {
+            // start the idle timer
+            [weakSelf startIdleTimer];
+        }
     });
 }
 
+- (void)startIdleTimer {
+    // restart the timer, by setting its fire time and repeat interval
+    dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cIdleTimeout * NSEC_PER_SEC);
+    dispatch_source_set_timer(_idleTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+}
+
+- (void)cancelIdleTimer {
+    // set the fire time to forever
+    dispatch_source_set_timer(_idleTimer, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
+}
+
 #pragma mark Public
+
+- (void)cancelAllRequests {
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_barrier_async(_requestQueue, ^{
+        for (DLSFTPRequest *request in weakSelf.requests) {
+            [request cancel];
+        }
+        [weakSelf.requests removeAllObjects];
+        [weakSelf startIdleTimer];
+    });
+}
 
 - (NSUInteger)requestCount {
     __block NSUInteger count = 0;
@@ -576,16 +626,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     [self cancelAllRequests];
     dispatch_sync(_socketQueue, ^{
         [self disconnectSocket];
-    });
-}
-
-- (void)cancelAllRequests {
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_barrier_async(_requestQueue, ^{
-        for (DLSFTPRequest *request in weakSelf.requests) {
-            [request cancel];
-        }
-        [weakSelf.requests removeAllObjects];
     });
 }
 
