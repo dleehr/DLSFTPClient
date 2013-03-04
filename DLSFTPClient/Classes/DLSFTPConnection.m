@@ -434,6 +434,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 
 - (void)addRequest:(DLSFTPRequest *)request {
+    NSLog(@"Adding request: %@", request);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests addObject:request];
@@ -442,6 +443,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 }
 
 - (void)removeRequest:(DLSFTPRequest *)request {
+    NSLog(@"Removing request: %@", request);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests removeObject:request];
@@ -482,6 +484,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     dispatch_sync(_requestQueue, ^{
         count = [weakSelf.requests count];
     });
+    NSLog(@"Returning count: %d", count);
     return count;
 }
 
@@ -1333,12 +1336,19 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             while (   request.isCancelled == NO
                    && (bytesRead = libssh2_sftp_read(handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
                 waitsocket(socketFD, session);
+                if (request.isCancelled) {
+                    printf("request is cancelled after waitsocket\n");
+                }
             }
             if (request.isCancelled) {
+                printf("request is cancelled, breaking\n");
                 break;
             }
             // after data has been read, write it to the channel
             if (bytesRead > 0) {
+                if (request.isCancelled) {
+                    printf("uh oh, request is cancelled but bytesRead is %d\n", bytesRead);
+                }
                 dispatch_source_merge_data(progressSource, bytesRead);
                 dispatch_data_t data = dispatch_data_create(buffer, bytesRead, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
                 dispatch_io_write(  channel
