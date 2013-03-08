@@ -30,66 +30,14 @@
 //
 
 #import <Foundation/Foundation.h>
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
-#define NEEDS_DISPATCH_RETAIN_RELEASE 0
-#else                                         // iOS 5.X or earlier
-#define NEEDS_DISPATCH_RETAIN_RELEASE 1
-#endif
-
-// Error Definitions
-
-extern NSString * const SFTPClientErrorDomain;
-extern NSString * const SFTPClientUnderlyingErrorKey;
-
-typedef enum {
-    eSFTPClientErrorUnknown = 1,
-    eSFTPClientErrorOperationInProgress,
-    eSFTPClientErrorInvalidArguments,
-    eSFTPClientErrorAlreadyConnected,
-    eSFTPClientErrorConnectionTimedOut,
-    eSFTPClientErrorSocketError,
-    eSFTPClientErrorUnableToConnect,
-    eSFTPClientErrorUnableToInitializeSession,
-    eSFTPClientErrorHandshakeFailed,
-    eSFTPClientErrorAuthenticationFailed,
-    eSFTPClientErrorNotConnected,
-    eSFTPClientErrorUnableToInitializeSFTP,
-    eSFTPClientErrorUnableToOpenDirectory,
-    eSFTPClientErrorUnableToCloseDirectory,
-    eSFTPClientErrorUnableToOpenFile,
-    eSFTPClientErrorUnableToCloseFile,
-    eSFTPClientErrorUnableToOpenLocalFileForWriting,
-    eSFTPClientErrorUnableToReadDirectory,
-    eSFTPClientErrorUnableToReadFile,
-    eSFTPClientErrorUnableToStatFile,
-    eSFTPClientErrorUnableToCreateChannel,
-    eSFTPClientErrorCancelledByUser,
-    eSFTPClientErrorUnableToOpenLocalFileForReading,
-    eSFTPClientErrorUnableToWriteFile,
-    eSFTPClientErrorUnableToMakeDirectory,
-    eSFTPClientErrorUnableToRename
-} eSFTPClientErrorCode;
-
-// Request object, for cancelling
-@interface DLSFTPRequest : NSObject
-
-@property (nonatomic, readonly, getter = isCancelled) BOOL cancelled;
-- (void)cancel;
-@end
-
-// Block Definitions
+#import "DLSFTP.h"
 
 @class DLSFTPFile;
+@class DLSFTPRequest;
 
-typedef void(^DLSFTPClientSuccessBlock)(void);
-typedef void(^DLSFTPClientFailureBlock)(NSError *error);
-typedef void(^DLSFTPClientArraySuccessBlock)(NSArray *array); // Array of DLSFTPFile objects
-typedef void(^DLSFTPClientProgressBlock) (unsigned long long bytesReceived, unsigned long long bytesTotal); // return NO for cancel
-typedef void(^DLSFTPClientFileTransferSuccessBlock)(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime);
-typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory);
+int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
 
-@interface DLSFTPConnection : NSObject
+@interface DLSFTPConnection : NSObject <DLSFTPRequestDelegate>
 
 #pragma mark Connection
 
@@ -120,6 +68,9 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
 - (void)cancelAllRequests;
 - (BOOL)isConnected;
 - (NSUInteger)requestCount;
+
+- (void)addRequest:(DLSFTPRequest *)request;
+- (void)removeRequest:(DLSFTPRequest *)request;
 
 #pragma mark Directory Operations
 

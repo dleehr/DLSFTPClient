@@ -35,10 +35,17 @@
 #include "libssh2.h"
 #include "libssh2_config.h"
 #include "libssh2_sftp.h"
+#import "DLSFTPRequest.h"
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
+#define NEEDS_DISPATCH_RETAIN_RELEASE 0
+#else                                         // iOS 5.X or earlier
+#define NEEDS_DISPATCH_RETAIN_RELEASE 1
+#endif
 
 // keyboard-interactive response
 static void response(const char *name,   int name_len, const char *instruction,   int instruction_len,   int num_prompts,   const LIBSSH2_USERAUTH_KBDINT_PROMPT *prompts,   LIBSSH2_USERAUTH_KBDINT_RESPONSE *responses,   void **abstract);
-static int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
+
 
 NSString * const SFTPClientErrorDomain = @"SFTPClientErrorDomain";
 NSString * const SFTPClientUnderlyingErrorKey = @"SFTPClientUnderlyingError";
@@ -52,33 +59,7 @@ static const size_t cBufferSize = 8192;
 #import "DLSFTPFile.h"
 #import "NSDictionary+SFTPFileAttributes.h"
 
-typedef void(^DLSFTPRequestCancelHandler)(void);
-
-@interface DLSFTPRequest ()
-
-+ (DLSFTPRequest *)request;
-
-@property (nonatomic, readwrite, getter = isCancelled) BOOL cancelled;
-@property (nonatomic, readwrite, copy) DLSFTPRequestCancelHandler cancelHandler;
-
-@end
-
-@implementation DLSFTPRequest
-
-+ (DLSFTPRequest *)request {
-    return [[DLSFTPRequest alloc] init];
-}
-
-- (void)cancel {
-    if (self.cancelHandler) {
-        DLSFTPRequestCancelHandler handler = self.cancelHandler;
-        self.cancelHandler = nil;
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), handler);
-    }
-    self.cancelled = YES;
-}
-
-@end
+// goes away
 
 #define CHECK_REQUEST_CANCELLED if (request.isCancelled) { \
     [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser \
@@ -88,6 +69,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     [weakSelf removeRequest:request]; \
     return; \
 }
+
+// goes away
 
 #define CHECK_PATH(path) if ([path length] == 0) { \
     [weakSelf failWithErrorCode:eSFTPClientErrorInvalidArguments \
@@ -105,7 +88,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     dispatch_queue_t _socketQueue;
 
     // file IO
-    dispatch_queue_t _fileIOQueue;
+    dispatch_queue_t _fileIOQueue; // not necessary
 
     // request queue
     dispatch_queue_t _requestQueue;
@@ -439,10 +422,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests addObject:request];
         [weakSelf cancelIdleTimer];
+        [weakSelf startNextRequest];
     });
 }
 
 - (void)removeRequest:(DLSFTPRequest *)request {
+    // TODO: check if the request is between start and finish, and cancel it if so
     NSLog(@"Removing request: %@", request);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
@@ -451,6 +436,30 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
             // start the idle timer
             [weakSelf startIdleTimer];
         }
+    });
+}
+
+- (void)startNextRequest {
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_barrier_async(_requestQueue, ^{
+        if([weakSelf.requests count] > 0) {
+            DLSFTPRequest *request = [weakSelf.requests objectAtIndex:0];
+            [weakSelf startRequest:request];
+        }
+    });
+}
+
+- (void)startRequest:(DLSFTPRequest *)request {
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
+        [request start];
+        if (request.error) {
+            [request fail];
+        } else {
+            [request finish];
+        }
+        [weakSelf removeRequest:request];
+        [weakSelf startNextRequest];
     });
 }
 
@@ -664,141 +673,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
                            successBlock:(DLSFTPClientArraySuccessBlock)successBlock
                            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
-    [self addRequest:request];
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
-        CHECK_REQUEST_CANCELLED
-        CHECK_PATH(directoryPath)
-        if ([weakSelf isConnected] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
-                       errorDescription:@"Socket not connected"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-        }
-
-        LIBSSH2_SESSION *session = self.session;
-        LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = self.socket;
-        __weak DLSFTPConnection *weakSelf = self;
-        if (sftp == NULL) {
-            // unable to initialize sftp
-            int lastError = libssh2_session_last_errno(session);
-            char *errmsg = NULL;
-            int errmsg_len = 0;
-            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
-                                          , errmsg
-                                          , lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // sftp is now valid
-        // get a file handle for reading the directory
-        LIBSSH2_SFTP_HANDLE *handle = NULL;
-        while(   ((handle = libssh2_sftp_opendir(sftp, [directoryPath UTF8String])) == NULL
-              && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN))
-              && request.isCancelled == NO) {
-            waitsocket(socketFD, session);
-        }
-
-        CHECK_REQUEST_CANCELLED
-
-        if (handle == NULL) {
-            // unable to open directory
-            unsigned long lastError = libssh2_sftp_last_error(sftp);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to open directory: sftp error: %ld", lastError];
-
-            // unable to initialize session
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenDirectory
-                       errorDescription:errorDescription
-                        underlyingError:@(lastError)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // handle is now open
-        char buffer[cBufferSize];
-
-        LIBSSH2_SFTP_ATTRIBUTES attributes;
-
-        // opened directory, have a handle.  now read it
-        // These get dupicates
-        NSMutableArray *fileList = [[NSMutableArray alloc] init];
-        int result = 0;
-
-        //attempt to read
-        // EAGAIN means waitsocket
-        // <0 means error
-        // >0 means got data
-        do {
-            while (   ((result = libssh2_sftp_readdir(handle, buffer, cBufferSize, &attributes)) == LIBSSH2SFTP_EAGAIN)
-                   && request.isCancelled == NO){
-                waitsocket(socketFD, session);
-            }
-            CHECK_REQUEST_CANCELLED
-            if (result > 0) {
-                NSString *filename = [NSString stringWithUTF8String:buffer];
-                // skip . and ..
-                if ([filename isEqualToString:@"."] || [filename isEqualToString:@".."]) {
-                    continue;
-                }
-                NSString *filepath = [directoryPath stringByAppendingPathComponent:filename];
-                NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
-                DLSFTPFile *file = [[DLSFTPFile alloc] initWithPath:filepath
-                                                         attributes:attributesDictionary];
-                [fileList addObject:file];
-            }
-        } while (result > 0);
-
-        if (result < 0) {
-            result = libssh2_sftp_last_error(sftp);
-            while (   ((libssh2_sftp_closedir(handle)) == LIBSSH2SFTP_EAGAIN)
-                   && request.isCancelled == NO) {
-                waitsocket(socketFD, session);
-            }
-            // error reading
-            NSString *errorDescription = [NSString stringWithFormat:@"Read directory failed with code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToReadDirectory
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // close the handle
-        while((   (result = libssh2_sftp_closedir(handle)) == LIBSSH2SFTP_EAGAIN)
-               && request.isCancelled == NO){
-            waitsocket(socketFD, session);
-        }
-        if (result) {
-            NSString *errorDescription = [NSString stringWithFormat:@"Close directory handle failed with code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToCloseDirectory
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        [fileList sortUsingSelector:@selector(compare:)];
-        if (successBlock) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                successBlock(fileList);
-            });
-        }
-        [weakSelf removeRequest:request];
-        return;
-    });
-    return request;
+    return nil;
 }
 
 - (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
@@ -1141,309 +1016,16 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
     return request;
 }
 
-
+// should make custom DLSFTPRequest subclasses that do things?
 - (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
                                 toLocalPath:(NSString *)localPath
                                      resume:(BOOL)resume
                               progressBlock:(DLSFTPClientProgressBlock)progressBlock
                                successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                                failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
-    [self addRequest:request];
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
-        CHECK_REQUEST_CANCELLED
-        CHECK_PATH(localPath)
-        CHECK_PATH(remotePath)
-        if ([weakSelf isConnected] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
-                       errorDescription:@"Socket not connected"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-        }
-        unsigned long long resumeOffset = 0ull;
-        if ([[NSFileManager defaultManager] fileExistsAtPath:localPath] == NO) {
-            // File does not exist, create it
-            [[NSFileManager defaultManager] createFileAtPath:localPath
-                                                    contents:nil
-                                                  attributes:nil];
-        } else {
-            // File exists, get existing size
-            NSError *error = nil;
-            NSDictionary *localAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:localPath
-                                                                                             error:&error];
-            if (error) {
-                [weakSelf failWithErrorCode:eSFTPClientErrorUnableToReadFile
-                           errorDescription:@"Unable to get attributes (file size) of existing file"
-                            underlyingError:@(error.code)
-                               failureBlock:failureBlock];
-                [weakSelf removeRequest:request];
-                return;
-            }
-            
-            if(resume) {
-                resumeOffset = [localAttributes fileSize];
-            }
-        }
-
-        if ([[NSFileManager defaultManager] isWritableFileAtPath:localPath] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenLocalFileForWriting
-                       errorDescription:@"Local file is not writable"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        LIBSSH2_SESSION *session = self.session;
-        LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = self.socket;
-        if (sftp == NULL) {
-            // unable to initialize sftp
-            int lastError = libssh2_session_last_errno(session);
-            char *errmsg = NULL;
-            int errmsg_len = 0;
-            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
-                                          , errmsg
-                                          , lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // sftp is now valid, get a file handle for the file to download
-        LIBSSH2_SFTP_HANDLE *handle = NULL;
-        while (   (handle = libssh2_sftp_open(sftp, [remotePath UTF8String], LIBSSH2_FXF_READ, 0)) == NULL
-               && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)
-               && request.isCancelled == NO) {
-            waitsocket(socketFD, session);
-        }
-
-        CHECK_REQUEST_CANCELLED
-        
-        if (handle == NULL) {
-            // unable to open file
-            // get last error
-            unsigned long lastError = libssh2_sftp_last_error(sftp);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to open file for reading: SFTP Status Code %ld", lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenFile
-                       errorDescription:errorDescription
-                        underlyingError:@(lastError)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-        // should be able to cancel any of these
-
-        // file handle is now open
-        LIBSSH2_SFTP_ATTRIBUTES attributes;
-        int result;
-        while (  ((result = libssh2_sftp_fstat(handle, &attributes)) == LIBSSH2SFTP_EAGAIN)
-               && request.isCancelled == NO) {
-            waitsocket(socketFD, session);
-        }
-        // can also check permissions/types
-        if (result) {
-            // unable to stat the file
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to stat file: SFTP Status Code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToStatFile
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        if (resume) {
-            libssh2_sftp_seek64(handle, resumeOffset);
-        }
-
-        dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
-        /* Begin dispatch io */
-        __block dispatch_io_t channel;
-        void(^cleanup_handler)(int) = ^(int error) {
-            if (error) {
-                printf("Error creating channel: %d", error);
-            }
-            NSLog(@"finished writing file for download, cleaning up channel");
-            #if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(channel);
-            #endif
-            dispatch_semaphore_signal(semaphore);
-        };
-
-        int oflag;
-        if (resume) {
-            oflag =   O_APPEND
-                    | O_WRONLY
-                    | O_CREAT;
-        } else {
-            oflag =   O_WRONLY
-                    | O_CREAT
-                    | O_TRUNC;
-        }
-
-        channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
-                                               , [localPath UTF8String]
-                                               , oflag
-                                               , 0
-                                               , _fileIOQueue
-                                               , cleanup_handler
-                                               );
-        if (channel == NULL) {
-            // Error creating the channel
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to create a channel for writing to %@", localPath];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToCreateChannel
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // dispatch source to invoke progress handler block
-        dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-        __block unsigned long long bytesReceived = resumeOffset;
-        unsigned long long filesize = attributes.filesize;
-        dispatch_source_set_event_handler(progressSource, ^{
-                bytesReceived += dispatch_source_get_data(progressSource);
-            if (progressBlock) {
-                progressBlock(bytesReceived, filesize);
-            }
-        });
-        dispatch_source_set_cancel_handler(progressSource, ^{
-#if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(progressSource);
-#endif
-        });
-
-        char buffer[cBufferSize];
-
-        int bytesRead = 0;
-        dispatch_resume(progressSource);
-
-        NSDate *startTime = [NSDate date];
-
-        do {
-            // first read data from libssh2
-            bytesRead = 0;
-            while (   request.isCancelled == NO
-                   && (bytesRead = libssh2_sftp_read(handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
-                waitsocket(socketFD, session);
-                if (request.isCancelled) {
-                    printf("request is cancelled after waitsocket\n");
-                }
-            }
-            if (request.isCancelled) {
-                printf("request is cancelled, breaking\n");
-                break;
-            }
-            // after data has been read, write it to the channel
-            if (bytesRead > 0) {
-                if (request.isCancelled) {
-                    printf("uh oh, request is cancelled but bytesRead is %d\n", bytesRead);
-                }
-                dispatch_source_merge_data(progressSource, bytesRead);
-                dispatch_data_t data = dispatch_data_create(buffer, bytesRead, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-                dispatch_io_write(  channel
-                                  , 0
-                                  , data
-                                  , _fileIOQueue // just for reporting the below block
-                                  , ^(bool done, dispatch_data_t data, int error) {
-                                      // done refers to the chunk of data written
-                                      // Tried moving progress reporting here, didn't make much difference
-                                      if (error) {
-                                          printf("error in dispatch_io_write %d\n", error);
-                                      }
-                                  });
-                #if NEEDS_DISPATCH_RETAIN_RELEASE
-                dispatch_release(data);
-                #endif
-            } // if bytesRead is 0 or less than 0, reading is finished
-        } while ((request.isCancelled == NO) && (bytesRead > 0));
-
-        NSDate *finishTime = [NSDate date];
-        dispatch_source_cancel(progressSource);
-        dispatch_io_close(channel, 0);
-
-        /* End dispatch_io */
-
-        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-        #if NEEDS_DISPATCH_RETAIN_RELEASE
-        dispatch_release(semaphore);
-        #endif
-
-        // not using the cancel macro here because the progress source needs
-        // to be cancelled
-        if (request.isCancelled) {
-            // cancelled by user
-            while(libssh2_sftp_close_handle(handle) == LIBSSH2SFTP_EAGAIN) {
-                waitsocket(socketFD, session);
-            }
-
-            // delete the file if not resumable
-            if (resume == NO) {
-                NSError __autoreleasing *deleteError = nil;
-                if([[NSFileManager defaultManager] removeItemAtPath:localPath error:&deleteError] == NO) {
-                    NSLog(@"Unable to delete unfinished file: %@", deleteError);
-                }
-            }
-
-            [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
-                       errorDescription: @"Cancelled by user."
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        if (bytesRead < 0) {
-            // get the error before closing the file
-            int result = libssh2_sftp_last_error(sftp);
-            while(libssh2_sftp_close_handle(handle) == LIBSSH2SFTP_EAGAIN) {
-                waitsocket(socketFD, session);
-            }
-            // error reading
-            NSString *errorDescription = [NSString stringWithFormat:@"Read file failed with code %d.", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToReadFile
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // now close the remote handle
-        while((result = libssh2_sftp_close_handle(handle)) == LIBSSH2SFTP_EAGAIN) {
-            waitsocket(socketFD, session);
-        }
-        if (result) {
-            NSString *errorDescription = [NSString stringWithFormat:@"Close file handle failed with code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToCloseFile
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-        NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
-        DLSFTPFile *file = [[DLSFTPFile alloc] initWithPath:remotePath
-                                                 attributes:attributesDictionary];
-        if (successBlock) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                successBlock(file, startTime, finishTime);
-            });
-        }
-        [weakSelf removeRequest:request];
-    });
-    return request;
+    return nil;
 }
+
 
 - (DLSFTPRequest *)uploadFileToRemotePath:(NSString *)remotePath
                             fromLocalPath:(NSString *)localPath
@@ -1747,7 +1329,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 // waitsocket from http://www.libssh2.org/examples/
 
-static int waitsocket(int socket_fd, LIBSSH2_SESSION *session) {
+int waitsocket(int socket_fd, LIBSSH2_SESSION *session) {
     struct timeval timeout;
     int rc;
     fd_set fd;

@@ -32,6 +32,7 @@
 #import "FileDownloadViewController.h"
 #import "DLSFTPFile.h"
 #import "DLSFTPConnection.h"
+#import "DLSFTPRequest.h"
 #import "DLFileSizeFormatter.h"
 #import "DLDocumentsDirectoryPath.h"
 

@@ -33,6 +33,7 @@
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
 #import "NSDictionary+SFTPFileAttributes.h"
+#import "DLSFTPListFilesRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -93,18 +94,21 @@
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     static NSString *directoryPath = @"/Users/testuser/sftp-test";
-    [self.connection listFilesInDirectory:directoryPath
-                             successBlock:^(NSArray *array) {
-                                 dispatch_semaphore_signal(semaphore);
-                             }
-                             failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-    }];
+    DLSFTPListFilesRequest *request = [[DLSFTPListFilesRequest alloc] initWithConnection:self.connection
+                                                                           directoryPath:directoryPath
+                                                                            successBlock:^(NSArray *array) {
+                                                                                dispatch_semaphore_signal(semaphore);
+                                                                            }
+
+                                                                            failureBlock:^(NSError *error) {
+                                                                                localError = error;
+                                                                                dispatch_semaphore_signal(semaphore);
+                                                                            }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-
+/*
 
 - (void)test03MkDir {
     [self test01Connect];
@@ -455,5 +459,5 @@
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-
+*/
 @end

@@ -32,6 +32,7 @@
 #import "FileUploadViewController.h"
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
+#import "DLSFTPRequest.h"
 #import "DLFileSizeFormatter.h"
 
 // TODO: convert table view to show all file attributes

@@ -12,7 +12,6 @@
 		372F7BF1162CDE230038F852 /* DLSFTPFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */; };
 		372F7BF2162CDE290038F852 /* NSDictionary+SFTPFileAttributes.m in Sources */ = {isa = PBXBuildFile; fileRef = 3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */; };
 		3731A5A716CB2F8A00A238C2 /* privatekey.pem in Resources */ = {isa = PBXBuildFile; fileRef = 3731A5A616CB2F8A00A238C2 /* privatekey.pem */; };
-		3731A5AD16CB384B00A238C2 /* DLSFTPClientPrivateKeyTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 3731A5A916CB2FEA00A238C2 /* DLSFTPClientPrivateKeyTests.m */; };
 		3734F02F15D699FE0078A7E5 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F02E15D699FE0078A7E5 /* UIKit.framework */; };
 		3734F03115D699FE0078A7E5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03015D699FE0078A7E5 /* Foundation.framework */; };
 		3734F03315D699FE0078A7E5 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F03215D699FE0078A7E5 /* CoreGraphics.framework */; };
@@ -23,6 +22,9 @@
 		3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F04F15D69B190078A7E5 /* libssh2.a */; };
 		3734F05315D69B190078A7E5 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734F05015D69B190078A7E5 /* libssl.a */; };
 		3738FE3E15D704E900D4BE07 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 3738FE3D15D704E900D4BE07 /* libz.dylib */; };
+		375BDA9D16E596CC00E96C64 /* DLSFTPRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDA9C16E596CC00E96C64 /* DLSFTPRequest.m */; };
+		375BDAA016E8430600E96C64 /* DLSFTPListFilesRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDA9F16E8430600E96C64 /* DLSFTPListFilesRequest.m */; };
+		375BDAA416E97D2600E96C64 /* DLSFTPDownloadRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDAA316E97D2600E96C64 /* DLSFTPDownloadRequest.m */; };
 		375D47F615F0402300BB8B79 /* FileUploadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F515F0402300BB8B79 /* FileUploadViewController.m */; };
 		375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */; };
 		3788412716CF2CAA00CBCB2D /* libDLSFTPClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */; };
@@ -102,6 +104,13 @@
 		3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPFile.m; sourceTree = "<group>"; };
 		3738FE4715D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+SFTPFileAttributes.h"; sourceTree = "<group>"; };
 		3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSDictionary+SFTPFileAttributes.m"; sourceTree = "<group>"; };
+		375BDA9B16E596CC00E96C64 /* DLSFTPRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPRequest.h; sourceTree = "<group>"; };
+		375BDA9C16E596CC00E96C64 /* DLSFTPRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPRequest.m; sourceTree = "<group>"; };
+		375BDA9E16E8430600E96C64 /* DLSFTPListFilesRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPListFilesRequest.h; sourceTree = "<group>"; };
+		375BDA9F16E8430600E96C64 /* DLSFTPListFilesRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPListFilesRequest.m; sourceTree = "<group>"; };
+		375BDAA116E845A000E96C64 /* DLSFTP.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DLSFTP.h; sourceTree = "<group>"; };
+		375BDAA216E97D2600E96C64 /* DLSFTPDownloadRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPDownloadRequest.h; sourceTree = "<group>"; };
+		375BDAA316E97D2600E96C64 /* DLSFTPDownloadRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPDownloadRequest.m; sourceTree = "<group>"; };
 		375D47F415F0402300BB8B79 /* FileUploadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileUploadViewController.h; sourceTree = "<group>"; };
 		375D47F515F0402300BB8B79 /* FileUploadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileUploadViewController.m; sourceTree = "<group>"; };
 		375D47F815F1939E00BB8B79 /* UploadFilePickerViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UploadFilePickerViewController.h; sourceTree = "<group>"; };
@@ -221,6 +230,13 @@
 				3738FE4115D72B9600D4BE07 /* DLSFTPFile.m */,
 				3738FE4715D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.h */,
 				3738FE4815D7694C00D4BE07 /* NSDictionary+SFTPFileAttributes.m */,
+				375BDA9B16E596CC00E96C64 /* DLSFTPRequest.h */,
+				375BDA9C16E596CC00E96C64 /* DLSFTPRequest.m */,
+				375BDAA216E97D2600E96C64 /* DLSFTPDownloadRequest.h */,
+				375BDAA316E97D2600E96C64 /* DLSFTPDownloadRequest.m */,
+				375BDA9E16E8430600E96C64 /* DLSFTPListFilesRequest.h */,
+				375BDA9F16E8430600E96C64 /* DLSFTPListFilesRequest.m */,
+				375BDAA116E845A000E96C64 /* DLSFTP.h */,
 			);
 			name = Classes;
 			path = DLSFTPClient/Classes;
@@ -424,6 +440,9 @@
 				372F7BF0162CDE1D0038F852 /* DLSFTPConnection.m in Sources */,
 				372F7BF1162CDE230038F852 /* DLSFTPFile.m in Sources */,
 				372F7BF2162CDE290038F852 /* NSDictionary+SFTPFileAttributes.m in Sources */,
+				375BDA9D16E596CC00E96C64 /* DLSFTPRequest.m in Sources */,
+				375BDAA016E8430600E96C64 /* DLSFTPListFilesRequest.m in Sources */,
+				375BDAA416E97D2600E96C64 /* DLSFTPDownloadRequest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -450,7 +469,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				37DB18B61699EB300053D51A /* DLSFTPClientTests.m in Sources */,
-				3731A5AD16CB384B00A238C2 /* DLSFTPClientPrivateKeyTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
