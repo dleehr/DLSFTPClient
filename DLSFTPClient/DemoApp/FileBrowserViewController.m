@@ -32,6 +32,8 @@
 #import "FileBrowserViewController.h"
 #import "DLSFTPFile.h"
 #import "DLSFTPConnection.h"
+#import "DLSFTPListFilesRequest.h"
+#import "DLSFTPMakeDirectoryRequest.h"
 #import "DLFileSizeFormatter.h"
 #import "FileDownloadViewController.h"
 #import "UploadFilePickerViewController.h"
@@ -128,9 +130,10 @@ static NSString * cRootPath = @"/";
     };
 
     // begin loading files
-    [_connection listFilesInDirectory:_path
-                         successBlock:successBlock
-                         failureBlock:failureBlock];
+    DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:_path
+                                                                      successBlock:successBlock
+                                                                      failureBlock:failureBlock];
+    [_connection submitRequest:request];
     return @[ ];
 }
 
@@ -253,10 +256,10 @@ static NSString * cRootPath = @"/";
                                                       otherButtonTitles:nil];
             [alertView show];
         };
-
-        [_connection makeDirectory:makeDirectoryPath
-                      successBlock:successBlock
-                      failureBlock:failureBlock];
+        DLSFTPRequest *request = [[DLSFTPMakeDirectoryRequest alloc] initWithDirectoryPath:makeDirectoryPath
+                                                                              successBlock:successBlock
+                                                                              failureBlock:failureBlock];
+        [_connection submitRequest:request];
     }
 }
 

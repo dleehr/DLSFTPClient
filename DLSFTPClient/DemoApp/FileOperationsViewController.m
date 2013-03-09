@@ -32,6 +32,8 @@
 #import "FileOperationsViewController.h"
 #import "DLSFTPFile.h"
 #import "DLSFTPConnection.h"
+#import "DLSFTPRemoveFileRequest.h"
+#import "DLSFTPMoveRenameRequest.h"
 
 typedef enum {
       eAlertViewTypeDelete
@@ -179,11 +181,11 @@ typedef enum {
     };
 
     NSString *newPath = [[self.file.path stringByDeletingLastPathComponent] stringByAppendingPathComponent:text];
-    [self.connection renameOrMoveItemAtRemotePath:self.file.path
-                                      withNewPath:newPath
-                                     successBlock:successBlock
-                                     failureBlock:failureBlock];
-    
+    DLSFTPRequest *request = [[DLSFTPMoveRenameRequest alloc] initWithSourcePath:self.file.path
+                                                                 destinationPath:newPath
+                                                                    successBlock:successBlock
+                                                                    failureBlock:failureBlock];
+    [self.connection submitRequest:request];
 }
 
 - (void)deleteConfirmed {
@@ -206,9 +208,10 @@ typedef enum {
         });
     };
 
-    [self.connection removeFileAtPath:self.file.path
-                         successBlock:successBlock
-                         failureBlock:failureBlock];
+    DLSFTPRequest *request = [[DLSFTPRemoveFileRequest alloc] initWithFilePath:self.file.path
+                                                                  successBlock:successBlock
+                                                                  failureBlock:failureBlock];
+    [self.connection submitRequest:request];
 }
 
 

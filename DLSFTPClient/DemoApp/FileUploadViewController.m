@@ -33,6 +33,7 @@
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
 #import "DLSFTPRequest.h"
+#import "DLSFTPUploadRequest.h"
 #import "DLFileSizeFormatter.h"
 
 // TODO: convert table view to show all file attributes
@@ -234,11 +235,12 @@
 
     NSString *localFilename = [self.localPath lastPathComponent];
     NSString *remotePath = [self.remoteBasePath stringByAppendingPathComponent:localFilename];
-    self.request = [self.connection uploadFileToRemotePath:remotePath
-                                             fromLocalPath:self.localPath
-                                             progressBlock:progressBlock
-                                              successBlock:successBlock
-                                              failureBlock:failureBlock];
+    self.request = [[DLSFTPUploadRequest alloc] initWithRemotePath:remotePath
+                                                         localPath:self.localPath
+                                                      successBlock:successBlock
+                                                      failureBlock:failureBlock
+                                                     progressBlock:progressBlock];
+    [self.connection submitRequest:self.request];
 }
 
 - (void)cancelTapped:(id)sender {

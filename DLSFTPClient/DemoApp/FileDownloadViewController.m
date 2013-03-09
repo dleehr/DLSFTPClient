@@ -32,7 +32,7 @@
 #import "FileDownloadViewController.h"
 #import "DLSFTPFile.h"
 #import "DLSFTPConnection.h"
-#import "DLSFTPRequest.h"
+#import "DLSFTPDownloadRequest.h"
 #import "DLFileSizeFormatter.h"
 #import "DLDocumentsDirectoryPath.h"
 
@@ -228,12 +228,13 @@
 
     NSString *remotePath = self.file.path;
 
-    self.request = [self.connection downloadFileAtRemotePath:remotePath
-                                                 toLocalPath:[DLDocumentsDirectoryPath() stringByAppendingPathComponent:self.file.filename]
-                                                      resume:NO
-                                               progressBlock:progressBlock
-                                                successBlock:successBlock
-                                                failureBlock:failureBlock];
+    self.request = [[DLSFTPDownloadRequest alloc] initWithRemotePath:remotePath
+                                                           localPath:[DLDocumentsDirectoryPath() stringByAppendingPathComponent:self.file.filename]
+                                                              resume:NO
+                                                        successBlock:successBlock
+                                                        failureBlock:failureBlock
+                                                       progressBlock:progressBlock];
+    [self.connection submitRequest:self.request];
 }
 
 - (void)cancelTapped:(id)sender {
