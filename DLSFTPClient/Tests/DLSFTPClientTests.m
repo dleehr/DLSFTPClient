@@ -35,6 +35,7 @@
 #import "NSDictionary+SFTPFileAttributes.h"
 #import "DLSFTPListFilesRequest.h"
 #import "DLSFTPMakeDirectoryRequest.h"
+#import "DLSFTPRemoveDirectoryRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -150,7 +151,7 @@
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-/*
+
 - (void)test04RmDir {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
@@ -159,36 +160,39 @@
     NSString *basePath = self.connectionInfo[@"basePath"];
     NSString *directoryName = self.connectionInfo[@"directoryName"];
     NSString *fullPath = [basePath stringByAppendingPathComponent:directoryName];
-    [self.connection removeDirectoryAtPath:fullPath
-                         successBlock:^{
-                             dispatch_semaphore_signal(semaphore);
-                         } failureBlock:^(NSError *error) {
-                             localError = error;
-                             dispatch_semaphore_signal(semaphore);
-                         }];
+    DLSFTPRequest *request = [[DLSFTPRemoveDirectoryRequest alloc] initWithDirectoryPath:fullPath
+                                                                            successBlock:^{
+                                                                                dispatch_semaphore_signal(semaphore);
+                                                                            }
+                                                                            failureBlock:^(NSError *error) {
+                                                                                localError = error;
+                                                                                dispatch_semaphore_signal(semaphore);
+                                                                            }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
     // make sure the directory is removed
     semaphore = dispatch_semaphore_create(0);
-    [self.connection listFilesInDirectory:basePath
-                             successBlock:^(NSArray *array) {
-                                 __block BOOL foundDirectory = NO;
-                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
-                                     if ([file.filename isEqualToString:directoryName]) {
-                                         *stop = foundDirectory = YES;
-                                     }
-                                 }];
-                                 STAssertFalse(foundDirectory, @"Removed directory was found in listing");
-                                 dispatch_semaphore_signal(semaphore);
-                             } failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:basePath
+                                                       successBlock:^(NSArray *array) {
+                                                           __block BOOL foundDirectory = NO;
+                                                           [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                                               if ([file.filename isEqualToString:directoryName]) {
+                                                                   *stop = foundDirectory = YES;
+                                                               }
+                                                           }];
+                                                           STAssertFalse(foundDirectory, @"Removed directory was found in listing");
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       } failureBlock:^(NSError *error) {
+                                                           localError = error;
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-
+/*
 - (void)test05Upload {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
