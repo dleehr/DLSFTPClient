@@ -206,7 +206,6 @@ static const size_t cBufferSize = 8192;
         if (error) {
             printf("Error creating channel: %d", error);
         }
-        NSLog(@"finished writing file for download, cleaning up channel");
         dispatch_semaphore_signal(self.semaphore);
     };
 

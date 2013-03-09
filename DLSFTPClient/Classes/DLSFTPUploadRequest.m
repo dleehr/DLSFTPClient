@@ -141,7 +141,6 @@ static const size_t cBufferSize = 8192;
             if (error) {
                 printf("Error creating channel: %d", error);
             }
-            NSLog(@"finished reading file for upload, cleaning up channel");
         };
 
         dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM

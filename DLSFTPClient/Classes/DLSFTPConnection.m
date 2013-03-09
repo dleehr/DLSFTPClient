@@ -296,7 +296,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         // valid session, get the socket descriptor
         // must be called from socket's queue
         int result;
-        NSLog(@"Handshaking session");
         while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
                && weakSelf.isConnected) {
             waitsocket(socketFD, session);
@@ -379,7 +378,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 }
 
 - (void)submitRequest:(DLSFTPRequest *)request {
-    NSLog(@"Adding request: %@", request);
     request.connection = self;
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
@@ -390,7 +388,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 }
 
 - (void)removeRequest:(DLSFTPRequest *)request {
-    NSLog(@"Removing request: %@", request);
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         request.connection = nil;
@@ -426,7 +423,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 }
 
 - (void)startRequest {
-    NSLog(@"Starting request: %@", self.currentRequest);
     DLSFTPRequest *request = self.currentRequest;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         [request start];
@@ -506,7 +502,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_sync(_requestQueue, ^{
         count = [weakSelf.requests count];
     });
-    NSLog(@"Returning count: %d", count);
     return count;
 }
 
@@ -552,7 +547,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
         dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
         dispatch_source_set_event_handler(timeoutTimer, ^{
-            NSLog(@"timeout Timer fired, disconnecting socket");
             // timeout fired, close the socket
             dispatch_sync([weakSelf socketQueue], ^{
                 [weakSelf disconnectSocket]; // closes on socketQueue
