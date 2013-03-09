@@ -36,18 +36,12 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
 
 @interface DLSFTPRequest ()
 
-+ (DLSFTPRequest *)request;
-
 @property (nonatomic, readwrite, getter = isCancelled) BOOL cancelled;
 //@property (nonatomic, readwrite, copy) DLSFTPRequestCancelHandler cancelHandler;
 
 @end
 
 @implementation DLSFTPRequest
-
-+ (DLSFTPRequest *)request {
-    return [[DLSFTPRequest alloc] init];
-}
 
 - (void)cancel {
     if (self.cancelHandler) {
@@ -56,14 +50,6 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
         self.cancelHandler = nil;
     }
     self.cancelled = YES;
-}
-
-- (id)initWithConnection:(DLSFTPConnection *)connection {
-    self = [super init];
-    if (self) {
-        self.connection = connection;
-    }
-    return self;
 }
 
 - (void)start {
@@ -151,7 +137,6 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
     }
     self.successBlock = nil;
     self.failureBlock = nil;
-
 }
 
 @end

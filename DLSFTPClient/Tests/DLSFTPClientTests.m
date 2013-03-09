@@ -94,13 +94,11 @@
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     static NSString *directoryPath = @"/Users/testuser/sftp-test";
-    DLSFTPListFilesRequest *request = [[DLSFTPListFilesRequest alloc] initWithConnection:self.connection
-                                                                           directoryPath:directoryPath
-                                                                            successBlock:^(NSArray *array) {
+    DLSFTPListFilesRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:directoryPath
+                                                                               successBlock:^(NSArray *array) {
                                                                                 dispatch_semaphore_signal(semaphore);
                                                                             }
-
-                                                                            failureBlock:^(NSError *error) {
+                                                                               failureBlock:^(NSError *error) {
                                                                                 localError = error;
                                                                                 dispatch_semaphore_signal(semaphore);
                                                                             }];

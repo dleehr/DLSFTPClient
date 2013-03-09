@@ -46,9 +46,6 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 @property (nonatomic, copy) id successBlock;
 @property (nonatomic, copy) DLSFTPClientFailureBlock failureBlock;
 
-+ (DLSFTPRequest *)request; // Just to silence warnings for now
-- (id)initWithConnection:(DLSFTPConnection *)connection;
-
 // may be called by the connection or the end user
 - (void)cancel;
 
@@ -61,13 +58,7 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 - (BOOL)ready;
 - (BOOL)pathIsValid:(NSString *)path;
 - (BOOL)checkSftp;
-// convenience to generate an error
 - (NSError *)errorWithCode:(eSFTPClientErrorCode)errorCode
           errorDescription:(NSString *)errorDescription
            underlyingError:(NSNumber *)underlyingError;
-
-// maybe better to go in connection class
-//- (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
-//         errorDescription:(NSString *)errorDescription
-//          underlyingError:(NSNumber *)underlyingError;
 @end

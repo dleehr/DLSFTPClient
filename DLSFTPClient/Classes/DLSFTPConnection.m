@@ -417,6 +417,7 @@ static const size_t cBufferSize = 8192;
 
 - (void)addRequest:(DLSFTPRequest *)request {
     NSLog(@"Adding request: %@", request);
+    request.connection = self;
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests addObject:request];
@@ -428,6 +429,7 @@ static const size_t cBufferSize = 8192;
 - (void)removeRequest:(DLSFTPRequest *)request {
     // TODO: check if the request is between start and finish, and cancel it if so
     NSLog(@"Removing request: %@", request);
+    request.connection = nil;
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
         [weakSelf.requests removeObject:request];
@@ -659,7 +661,7 @@ static const size_t cBufferSize = 8192;
 - (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
                     successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
                     failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
+    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
@@ -759,7 +761,7 @@ static const size_t cBufferSize = 8192;
                                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
                                    failureBlock:(DLSFTPClientFailureBlock)failureBlock {
 
-    DLSFTPRequest *request = [DLSFTPRequest request];
+    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
@@ -857,7 +859,7 @@ static const size_t cBufferSize = 8192;
 - (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
                        successBlock:(DLSFTPClientSuccessBlock)successBlock
                        failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
+    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
@@ -928,7 +930,7 @@ static const size_t cBufferSize = 8192;
 - (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
                             successBlock:(DLSFTPClientSuccessBlock)successBlock
                             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
+    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
@@ -1012,7 +1014,7 @@ static const size_t cBufferSize = 8192;
                             progressBlock:(DLSFTPClientProgressBlock)progressBlock
                              successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [DLSFTPRequest request];
+    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
     [self addRequest:request];
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{

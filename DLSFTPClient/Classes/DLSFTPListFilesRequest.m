@@ -49,11 +49,10 @@ static const size_t cBufferSize = 8192;
 @implementation DLSFTPListFilesRequest
 
 // the request shouldn't be initialized with a connection
-- (id)initWithConnection:(DLSFTPConnection *)connection
-           directoryPath:(NSString *)directoryPath
-            successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    self = [super initWithConnection:connection];
+- (id)initWithDirectoryPath:(NSString *)directoryPath
+               successBlock:(DLSFTPClientArraySuccessBlock)successBlock
+               failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+    self = [super init];
     if (self) {
         self.successBlock = successBlock;
         self.failureBlock = failureBlock;

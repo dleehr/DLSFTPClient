@@ -65,14 +65,13 @@ static const size_t cBufferSize = 8192;
 @synthesize channel=_channel;
 @synthesize semaphore=_semaphore;
 
-- (id)initWithConnection:(DLSFTPConnection *)connection
-              remotePath:(NSString *)remotePath
+- (id)initWithRemotePath:(NSString *)remotePath
                localPath:(NSString *)localPath
             shouldresume:(BOOL)shouldResume
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock
            progressBlock:(DLSFTPClientProgressBlock)progressBlock {
-    self = [super initWithConnection:connection];
+    self = [super init];
     if (self) {
         self.remotePath = remotePath;
         self.localPath = localPath;

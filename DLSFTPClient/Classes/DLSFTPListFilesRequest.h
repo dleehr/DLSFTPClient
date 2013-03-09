@@ -34,9 +34,8 @@
 
 @interface DLSFTPListFilesRequest : DLSFTPRequest
 
-- (id)initWithConnection:(DLSFTPConnection *)connection
-           directoryPath:(NSString *)directoryPath
-            successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (id)initWithDirectoryPath:(NSString *)directoryPath
+               successBlock:(DLSFTPClientArraySuccessBlock)successBlock
+               failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 @end

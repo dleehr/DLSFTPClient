@@ -34,8 +34,7 @@
 
 @interface DLSFTPDownloadRequest : DLSFTPRequest
 
-- (id)initWithConnection:(DLSFTPConnection *)connection
-              remotePath:(NSString *)remotePath
+- (id)initWithRemotePath:(NSString *)remotePath
                localPath:(NSString *)localPath
             shouldresume:(BOOL)shouldResume
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
