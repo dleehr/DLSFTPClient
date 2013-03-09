@@ -245,7 +245,7 @@
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-/*
+
 - (void)test06Download {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
@@ -263,16 +263,18 @@
         STFail(@"Unable to assemble local path for downloading");
     }
 
-    [self.connection downloadFileAtRemotePath:remotePath
-                                  toLocalPath:localPath
-                                       resume:NO
-                                progressBlock:nil
-                                 successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
-                                    dispatch_semaphore_signal(semaphore);
-                                } failureBlock:^(NSError *error) {
-                                    localError = error;
-                                    dispatch_semaphore_signal(semaphore);
-                                }];
+    DLSFTPRequest *request = [[DLSFTPDownloadRequest alloc] initWithRemotePath:remotePath
+                                                                     localPath:localPath
+                                                                  shouldresume:NO
+                                                                  successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                                                      dispatch_semaphore_signal(semaphore);
+                                                                  }
+                                                                  failureBlock:^(NSError *error) {
+                                                                      localError = error;
+                                                                      dispatch_semaphore_signal(semaphore);
+                                                                  }
+                                                                 progressBlock:nil];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -282,6 +284,7 @@
                                                                   andPath:localPath];
     STAssertTrue(filesEqual, @"Contents of downloaded file do not match uploaded");
 }
+/*
 
 - (void)test07Rename {
     [self test01Connect];
