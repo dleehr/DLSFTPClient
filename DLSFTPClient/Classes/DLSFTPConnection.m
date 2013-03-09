@@ -116,6 +116,7 @@ static const size_t cBufferSize = 8192;
 
 // Request handling
 @property (nonatomic, strong) NSMutableArray *requests;
+@property (nonatomic, strong) DLSFTPRequest *currentRequest;
 - (void)addRequest:(DLSFTPRequest *)request;
 - (void)removeRequest:(DLSFTPRequest *)request;
 
@@ -427,11 +428,15 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)removeRequest:(DLSFTPRequest *)request {
-    // TODO: check if the request is between start and finish, and cancel it if so
     NSLog(@"Removing request: %@", request);
-    request.connection = nil;
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
+        request.connection = nil;
+        if ([weakSelf.currentRequest isEqual:request]) {
+            [weakSelf.currentRequest cancel];
+            weakSelf.currentRequest = nil;
+            return;
+        }
         [weakSelf.requests removeObject:request];
         if ([weakSelf.requests count] == 0) {
             // start the idle timer
@@ -441,16 +446,26 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)startNextRequest {
+    if (self.currentRequest) {
+        return;
+    }
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_barrier_async(_requestQueue, ^{
+        if (weakSelf.currentRequest) {
+            return;
+        }
         if([weakSelf.requests count] > 0) {
             DLSFTPRequest *request = [weakSelf.requests objectAtIndex:0];
-            [weakSelf startRequest:request];
+            [weakSelf.requests removeObjectAtIndex:0];
+            weakSelf.currentRequest = request;
+            [weakSelf startRequest];
         }
     });
 }
 
-- (void)startRequest:(DLSFTPRequest *)request {
+- (void)startRequest {
+    NSLog(@"Starting request: %@", self.currentRequest);
+    DLSFTPRequest *request = self.currentRequest;
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         [request start];
@@ -459,7 +474,7 @@ static const size_t cBufferSize = 8192;
         } else {
             [request finish];
         }
-        [weakSelf removeRequest:request];
+        weakSelf.currentRequest = nil;
         [weakSelf startNextRequest];
     });
 }
@@ -627,6 +642,7 @@ static const size_t cBufferSize = 8192;
 
 #pragma mark SFTP
 
+// This goes away
 - (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
          errorDescription:(NSString *)errorDescription
           underlyingError:(NSNumber *)underlyingError
@@ -661,99 +677,7 @@ static const size_t cBufferSize = 8192;
 - (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
                     successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
                     failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
-    [self addRequest:request];
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
-        CHECK_REQUEST_CANCELLED
-        CHECK_PATH(directoryPath)
-        if ([weakSelf isConnected] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
-                       errorDescription:@"Socket not connected"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-        }
-        LIBSSH2_SESSION *session = self.session;
-        LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = self.socket;
-
-        if (sftp == NULL) {
-            // unable to initialize sftp
-            int lastError = libssh2_session_last_errno(session);
-            char *errmsg = NULL;
-            int errmsg_len = 0;
-            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
-                                          , errmsg
-                                          , lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // sftp is now valid
-        // try to make the directory 0755
-        long mode = (LIBSSH2_SFTP_S_IRWXU|
-                     LIBSSH2_SFTP_S_IRGRP|LIBSSH2_SFTP_S_IXGRP|
-                     LIBSSH2_SFTP_S_IROTH|LIBSSH2_SFTP_S_IXOTH);
-
-        int result;
-        while(  ((result = (libssh2_sftp_mkdir(sftp, [directoryPath UTF8String], mode))) == LIBSSH2SFTP_EAGAIN)
-              && request.isCancelled == NO){
-            waitsocket(socketFD, session);
-        }
-        
-        CHECK_REQUEST_CANCELLED
-
-        if (result) {
-            // unable to make the directory
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to make directory: SFTP Status Code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToMakeDirectory
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // Directory made, stat it.
-        // can use stat since we don't need a descriptor
-        LIBSSH2_SFTP_ATTRIBUTES attributes;
-        while (  ((result = libssh2_sftp_stat(sftp, [directoryPath UTF8String], &attributes)) == LIBSSH2SFTP_EAGAIN)
-               && request.isCancelled == NO) {
-            waitsocket(socketFD, session);
-        }
-        
-        CHECK_REQUEST_CANCELLED
-
-        if (result) {
-            // unable to stat the directory
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to stat newly created directory: SFTP Status Code %d", result];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToStatFile
-                       errorDescription:errorDescription
-                        underlyingError:@(result)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // attributes are valid
-        NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
-        DLSFTPFile *createdDirectory = [[DLSFTPFile alloc] initWithPath:directoryPath
-                                                             attributes:attributesDictionary];
-
-        if (successBlock) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                successBlock(createdDirectory);
-            });
-        }
-        [weakSelf removeRequest:request];
-    });
-    return request;
+    return nil;
 }
 
 - (DLSFTPRequest *)renameOrMoveItemAtRemotePath:(NSString *)remotePath
