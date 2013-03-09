@@ -36,6 +36,8 @@
 #import "DLSFTPListFilesRequest.h"
 #import "DLSFTPMakeDirectoryRequest.h"
 #import "DLSFTPRemoveDirectoryRequest.h"
+#import "DLSFTPUploadRequest.h"
+#import "DLSFTPDownloadRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -192,7 +194,7 @@
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-/*
+
 - (void)test05Upload {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
@@ -205,42 +207,45 @@
     NSDictionary *localFileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:self.testFilePath
                                                                                          error:&localError];
     STAssertNil(localError, localError.localizedDescription);
-
-    [self.connection uploadFileToRemotePath:destPath
-                              fromLocalPath:self.testFilePath
-                              progressBlock:nil
-                               successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
-                                  dispatch_semaphore_signal(semaphore);
-                              } failureBlock:^(NSError *error) {
-                                  localError = error;
-                                  dispatch_semaphore_signal(semaphore);
-                              }];
+    DLSFTPRequest *request = [[DLSFTPUploadRequest alloc] initWithRemotePath:destPath
+                                                                   localpath:self.testFilePath
+                                                               progressBlock:nil
+                                                                successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
+                                                                    dispatch_semaphore_signal(semaphore);
+                                                                }
+                                                                failureBlock:^(NSError *error) {
+                                                                    localError = error;
+                                                                    dispatch_semaphore_signal(semaphore);
+                                                                }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
     // make sure the file listing reflects the same size
     semaphore = dispatch_semaphore_create(0);
-    [self.connection listFilesInDirectory:basePath
-                             successBlock:^(NSArray *array) {
-                                 __block BOOL foundFile = NO;
-                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
-                                     if ([file.filename isEqualToString:fileName]) {
-                                         *stop = foundFile = YES;
-                                         STAssertEquals(  file.attributes.fileSize
-                                                        , localFileAttributes.fileSize
-                                                        , @"Uploaded file size does not match local file size");
-                                     }
-                                 }];
-                                 STAssertTrue(foundFile, @"Uploaded file not found in listing");
-                                 dispatch_semaphore_signal(semaphore);
-                             } failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:basePath
+                                                       successBlock:^(NSArray *array) {
+                                                           __block BOOL foundFile = NO;
+                                                           [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                                               if ([file.filename isEqualToString:fileName]) {
+                                                                   *stop = foundFile = YES;
+                                                                   STAssertEquals(  file.attributes.fileSize
+                                                                                  , localFileAttributes.fileSize
+                                                                                  , @"Uploaded file size does not match local file size");
+                                                               }
+                                                           }];
+                                                           STAssertTrue(foundFile, @"Uploaded file not found in listing");
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }
+                                                       failureBlock:^(NSError *error) {
+                                                           localError = error;
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-
+/*
 - (void)test06Download {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
