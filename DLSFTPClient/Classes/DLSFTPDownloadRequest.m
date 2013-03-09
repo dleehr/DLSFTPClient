@@ -38,8 +38,6 @@
 //Constants
 static const size_t cBufferSize = 8192;
 
-
-
 @interface DLSFTPDownloadRequest ()
 
 @property (nonatomic, copy) DLSFTPClientProgressBlock progressBlock;
@@ -54,7 +52,6 @@ static const size_t cBufferSize = 8192;
 @property (nonatomic) dispatch_semaphore_t semaphore;
 @property (nonatomic) dispatch_source_t progressSource;
 
-// does this make sense to have in the base class?
 @property (nonatomic, assign) LIBSSH2_SFTP_HANDLE *handle;
 
 @end
@@ -95,7 +92,7 @@ static const size_t cBufferSize = 8192;
     }
     if (_channel) {
         dispatch_release(_channel);
-        _progressSource = NULL;
+        _channel = NULL;
     }
 #endif
 }
@@ -196,66 +193,63 @@ static const size_t cBufferSize = 8192;
     self.semaphore = dispatch_semaphore_create(0);
 
     /* Begin dispatch io */
-    {
-        void(^cleanup_handler)(int) = ^(int error) {
-            if (error) {
-                printf("Error creating channel: %d", error);
-            }
-            NSLog(@"finished writing file for download, cleaning up channel");
-            dispatch_semaphore_signal(self.semaphore);
-        };
-
-        int oflag;
-        if (self.shouldResume) {
-            oflag =   O_APPEND
-            | O_WRONLY
-            | O_CREAT;
-        } else {
-            oflag =   O_WRONLY
-            | O_CREAT
-            | O_TRUNC;
+    void(^cleanup_handler)(int) = ^(int error) {
+        if (error) {
+            printf("Error creating channel: %d", error);
         }
+        NSLog(@"finished writing file for download, cleaning up channel");
+        dispatch_semaphore_signal(self.semaphore);
+    };
 
-        dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
-                                                             , [self.localPath UTF8String]
-                                                             , oflag
-                                                             , 0
-                                                             , dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,  0   )
-                                                             , cleanup_handler
-                                                             );
-        if (channel == NULL) {
-            // Error creating the channel
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to create a channel for writing to %@", self.localPath];
-            self.error = [self errorWithCode:eSFTPClientErrorUnableToCreateChannel
-                            errorDescription:errorDescription
-                             underlyingError:nil];
-            return;
-        } else {
-            self.channel = channel;
-        }
+    int oflag;
+    if (self.shouldResume) {
+        oflag =   O_APPEND
+        | O_WRONLY
+        | O_CREAT;
+    } else {
+        oflag =   O_WRONLY
+        | O_CREAT
+        | O_TRUNC;
+    }
+
+    dispatch_io_t channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
+                                                         , [self.localPath UTF8String]
+                                                         , oflag
+                                                         , 0
+                                                         , dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,  0   )
+                                                         , cleanup_handler
+                                                         );
+    if (channel == NULL) {
+        // Error creating the channel
+        NSString *errorDescription = [NSString stringWithFormat:@"Unable to create a channel for writing to %@", self.localPath];
+        self.error = [self errorWithCode:eSFTPClientErrorUnableToCreateChannel
+                        errorDescription:errorDescription
+                         underlyingError:nil];
+        return;
+    } else {
+        self.channel = channel;
     }
     /* dispatch_io has been created */
 
     // configure progress source
-    {
-        dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-        __block unsigned long long bytesReceived = resumeOffset;
-        unsigned long long filesize = attributes.filesize;
-        __weak DLSFTPDownloadRequest *weakSelf = self;
-        dispatch_source_set_event_handler(progressSource, ^{
-            bytesReceived += dispatch_source_get_data(progressSource);
-            if (weakSelf.progressBlock) {
-                weakSelf.progressBlock(bytesReceived, filesize);
-            }
-        });
-        dispatch_source_set_cancel_handler(progressSource, ^{
-#if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(progressSource);
-#endif
-        });
-        self.progressSource = progressSource;
-        dispatch_resume(self.progressSource);
-    } // end of progressSource setup
+    dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+    __block unsigned long long bytesReceived = resumeOffset;
+    unsigned long long filesize = attributes.filesize;
+    DLSFTPClientProgressBlock progressBlock = self.progressBlock;
+    dispatch_source_set_event_handler(progressSource, ^{
+        bytesReceived += dispatch_source_get_data(progressSource);
+        if (progressBlock) {
+            progressBlock(bytesReceived, filesize);
+        }
+    });
+    dispatch_source_set_cancel_handler(progressSource, ^{
+    #if NEEDS_DISPATCH_RETAIN_RELEASE
+        dispatch_release(progressSource);
+    #endif
+    });
+    self.progressSource = progressSource;
+    dispatch_resume(self.progressSource);
+     // end of progressSource setup
 
     self.startTime = [NSDate date];
     // start the first download block
