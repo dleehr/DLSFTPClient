@@ -38,6 +38,7 @@
 #import "DLSFTPRemoveDirectoryRequest.h"
 #import "DLSFTPUploadRequest.h"
 #import "DLSFTPDownloadRequest.h"
+#import "DLSFTPMoveRenameRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -284,7 +285,6 @@
                                                                   andPath:localPath];
     STAssertTrue(filesEqual, @"Contents of downloaded file do not match uploaded");
 }
-/*
 
 - (void)test07Rename {
     [self test01Connect];
@@ -298,41 +298,46 @@
 
     NSString *remoteOriginalPath = [basePath stringByAppendingPathComponent:fileName];
     NSString *remoteRenamedPath = [basePath stringByAppendingPathComponent:newName];
-    [self.connection renameOrMoveItemAtRemotePath:remoteOriginalPath
-                                      withNewPath:remoteRenamedPath
-                                     successBlock:^(DLSFTPFile *fileOrDirectory) {
-                                         dispatch_semaphore_signal(semaphore);
-                                     } failureBlock:^(NSError *error) {
-                                         localError = error;
-                                         dispatch_semaphore_signal(semaphore);
-                                     }];
+    DLSFTPRequest *request = [[DLSFTPMoveRenameRequest alloc] initWithSourcePath:remoteOriginalPath
+                                                                 destinationPath:remoteRenamedPath
+                                                                    successBlock:^(DLSFTPFile *fileOrDirectory) {
+                                                                        dispatch_semaphore_signal(semaphore);
+                                                                    }
+                                                                    failureBlock:^(NSError *error) {
+                                                                        localError = error;
+                                                                        dispatch_semaphore_signal(semaphore);
+                                                                    }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
     // Verify the renamed name appears in the directory listing
     semaphore = dispatch_semaphore_create(0);
-    [self.connection listFilesInDirectory:basePath
-                             successBlock:^(NSArray *array) {
-                                 __block BOOL foundRenamedFile = NO;
-                                 __block BOOL foundOriginalFile = NO;
-                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
-                                     if ([file.filename isEqualToString:newName]) {
-                                         foundRenamedFile = YES;
-                                     } else if([file.filename isEqualToString:fileName]) {
-                                         foundOriginalFile = YES;
-                                     }
-                                 }];
-                                 STAssertTrue(foundRenamedFile, @"Renamed file was not found in listing");
-                                 STAssertFalse(foundOriginalFile, @"Original file was found in listing but should have been renamed");
-                                 dispatch_semaphore_signal(semaphore);
-                             } failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:basePath
+                                                       successBlock:^(NSArray *array) {
+                                                           __block BOOL foundRenamedFile = NO;
+                                                           __block BOOL foundOriginalFile = NO;
+                                                           [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                                               if ([file.filename isEqualToString:newName]) {
+                                                                   foundRenamedFile = YES;
+                                                               } else if([file.filename isEqualToString:fileName]) {
+                                                                   foundOriginalFile = YES;
+                                                               }
+                                                           }];
+                                                           STAssertTrue(foundRenamedFile, @"Renamed file was not found in listing");
+                                                           STAssertFalse(foundOriginalFile, @"Original file was found in listing but should have been renamed");
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }
+                                                       failureBlock:^(NSError *error) {
+                                                           localError = error;
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
 
+/*
 - (void)test08Delete {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
