@@ -108,7 +108,7 @@
                                                                           localError = error;
                                                                           dispatch_semaphore_signal(semaphore);
                                                                       }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
@@ -130,7 +130,7 @@
                                                                                         localError = error;
                                                                                         dispatch_semaphore_signal(semaphore);
                                                                                     }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -151,7 +151,7 @@
                                                            localError = error;
                                                            dispatch_semaphore_signal(semaphore);
                                                        }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
@@ -172,7 +172,7 @@
                                                                                 localError = error;
                                                                                 dispatch_semaphore_signal(semaphore);
                                                                             }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -192,7 +192,7 @@
                                                            localError = error;
                                                            dispatch_semaphore_signal(semaphore);
                                                        }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
@@ -219,7 +219,7 @@
                                                                     localError = error;
                                                                     dispatch_semaphore_signal(semaphore);
                                                                 }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -243,7 +243,7 @@
                                                            localError = error;
                                                            dispatch_semaphore_signal(semaphore);
                                                        }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
@@ -276,7 +276,7 @@
                                                                       dispatch_semaphore_signal(semaphore);
                                                                   }
                                                                  progressBlock:nil];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -308,7 +308,7 @@
                                                                         localError = error;
                                                                         dispatch_semaphore_signal(semaphore);
                                                                     }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -333,7 +333,7 @@
                                                            localError = error;
                                                            dispatch_semaphore_signal(semaphore);
                                                        }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
@@ -355,7 +355,7 @@
                                                                       localError = error;
                                                                       dispatch_semaphore_signal(semaphore);
                                                                   }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -376,7 +376,7 @@
                                                            localError = error;
                                                            dispatch_semaphore_signal(semaphore);
                                                        }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
@@ -410,7 +410,7 @@
                                                      localError = error;
                                                      dispatch_semaphore_signal(semaphore);
                                                  }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
 
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     // error should be cancelled by user
@@ -454,7 +454,7 @@
                                                           [request cancel];
                                                       }
                                                   }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     // error should be cancelled by user
     STAssertNotNil(localError, @"Cancelled download should have failed");
@@ -486,7 +486,7 @@
                                                                       dispatch_semaphore_signal(semaphore);
                                                                   }
                                                                  progressBlock:nil];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }

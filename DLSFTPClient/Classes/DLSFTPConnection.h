@@ -69,7 +69,7 @@ int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
 - (BOOL)isConnected;
 - (NSUInteger)requestCount;
 
-- (void)addRequest:(DLSFTPRequest *)request;
+- (void)submitRequest:(DLSFTPRequest *)request;
 - (void)removeRequest:(DLSFTPRequest *)request;
 
 #pragma mark Directory Operations

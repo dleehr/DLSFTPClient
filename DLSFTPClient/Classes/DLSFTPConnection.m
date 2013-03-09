@@ -118,9 +118,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 // Request handling
 @property (nonatomic, strong) NSMutableArray *requests;
 @property (nonatomic, strong) DLSFTPRequest *currentRequest;
-- (void)addRequest:(DLSFTPRequest *)request;
-- (void)removeRequest:(DLSFTPRequest *)request;
-
 @end
 
 
@@ -417,7 +414,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     });
 }
 
-- (void)addRequest:(DLSFTPRequest *)request {
+- (void)submitRequest:(DLSFTPRequest *)request {
     NSLog(@"Adding request: %@", request);
     request.connection = self;
     __weak DLSFTPConnection *weakSelf = self;

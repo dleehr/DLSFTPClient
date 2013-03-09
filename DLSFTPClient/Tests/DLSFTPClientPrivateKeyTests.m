@@ -76,7 +76,7 @@
                                                                           localError = error;
                                                                           dispatch_semaphore_signal(semaphore);
                                                                       }];
-    [self.connection addRequest:request];
+    [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
