@@ -101,8 +101,8 @@ static const size_t cBufferSize = 8192;
 }
 
 // These blocks are only used for connection operation, name them so
-@property (nonatomic, copy) id queuedSuccessBlock;
-@property (nonatomic, copy) DLSFTPClientFailureBlock queuedFailureBlock;
+@property (nonatomic, copy) DLSFTPClientSuccessBlock connectionSuccessBlock;
+@property (nonatomic, copy) DLSFTPClientFailureBlock connectionFailureBlock;
 
 @property (nonatomic, copy) NSString *username;
 @property (nonatomic, copy) NSString *password;
@@ -296,6 +296,11 @@ static const size_t cBufferSize = 8192;
 
 #pragma mark - Private
 
+- (void)clearConnectionBlocks {
+    self.connectionFailureBlock = nil;
+    self.connectionSuccessBlock = nil;
+}
+
 - (void)disconnectSocket {
     if (_idleTimer) { // avoid cancelling after dealloc
         [self cancelIdleTimer];
@@ -310,7 +315,7 @@ static const size_t cBufferSize = 8192;
     }
 }
 
-- (void)startSFTPSessionWithRequest:(DLSFTPRequest *)request {
+- (void)startSFTPSession {
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_async(_connectionGroup,_socketQueue, ^{
         int socketFD = self.socket;
@@ -322,8 +327,7 @@ static const size_t cBufferSize = 8192;
             // unable to initialize session
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToInitializeSession
                    errorDescription:@"Unable to initialize libssh2 session"];
-            weakSelf.queuedSuccessBlock = nil;
-            [weakSelf removeRequest:request];
+            weakSelf.connectionSuccessBlock = nil;
             return;
         }
         // valid session, get the socket descriptor
@@ -331,7 +335,7 @@ static const size_t cBufferSize = 8192;
         int result;
         NSLog(@"Handshaking session");
         while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
-               && request.isCancelled == NO) {
+               && weakSelf.isConnected) {
             waitsocket(socketFD, session);
         }
         if (result) {
@@ -343,14 +347,13 @@ static const size_t cBufferSize = 8192;
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorHandshakeFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
-            if (weakSelf.queuedFailureBlock) {
+            if (weakSelf.connectionFailureBlock) {
+                DLSFTPClientFailureBlock failureBlock = weakSelf.connectionFailureBlock;
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    weakSelf.queuedFailureBlock(error);
-                    weakSelf.queuedFailureBlock = nil;
-                    weakSelf.queuedSuccessBlock = nil;
+                    failureBlock(error);
                 });
             }
-            [weakSelf removeRequest:request];
+            [weakSelf clearConnectionBlocks];
             return;
         }
 
@@ -362,23 +365,23 @@ static const size_t cBufferSize = 8192;
         char * authmethods = NULL;
         while (   (authmethods = libssh2_userauth_list(session, [self.username UTF8String], strlen([self.username UTF8String]))) == NULL
                && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)
-               && request.isCancelled == NO) {
+               && weakSelf.isConnected) {
             waitsocket(socketFD, session);
         }
 
         if (authmethods && strstr(authmethods, "publickey") && self.keypath) {
             while (   (result = libssh2_userauth_publickey_fromfile(session, [self.username UTF8String], NULL, [self.keypath UTF8String], [self.password UTF8String]) == LIBSSH2_ERROR_EAGAIN)
-                   && request.isCancelled == NO) {
+                   && weakSelf.isConnected) {
                 waitsocket(socketFD, session);
             }
         } else if (authmethods && strstr(authmethods, "password")) {
             while (   (result = libssh2_userauth_password(session, [self.username UTF8String], [self.password UTF8String]) == LIBSSH2_ERROR_EAGAIN)
-                   && request.isCancelled == NO) {
+                   && weakSelf.isConnected) {
                 waitsocket(socketFD, session);
             }
         } else if(authmethods && strstr(authmethods, "keyboard-interactive")) {
             while (   (result = libssh2_userauth_keyboard_interactive(session, [_username UTF8String], response) == LIBSSH2_ERROR_EAGAIN)
-                   && request.isCancelled == NO) {
+                   && weakSelf.isConnected) {
                 waitsocket(socketFD, session);
             }
         } else {
@@ -393,25 +396,21 @@ static const size_t cBufferSize = 8192;
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
-            if (weakSelf.queuedFailureBlock) {
+            if (weakSelf.connectionFailureBlock) {
+                DLSFTPClientFailureBlock failureBlock = weakSelf.connectionFailureBlock;
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    weakSelf.queuedFailureBlock(error);
-                    weakSelf.queuedFailureBlock = nil;
-                    weakSelf.queuedSuccessBlock = nil;
+                    failureBlock(error);
                 });
             }
-            [weakSelf removeRequest:request];
+            [weakSelf clearConnectionBlocks];
             return;
         }
-        request.cancelHandler = nil;
         // authentication succeeded
         // session is now created and we can use it
-        if (self.queuedSuccessBlock) {
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), weakSelf.queuedSuccessBlock);
-            weakSelf.queuedSuccessBlock = nil;
-            weakSelf.queuedFailureBlock = nil;
+        if (weakSelf.connectionSuccessBlock) {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), weakSelf.connectionSuccessBlock);
         }
-        [weakSelf removeRequest:request];
+        [weakSelf clearConnectionBlocks];
         return;
     });
 }
@@ -507,45 +506,47 @@ static const size_t cBufferSize = 8192;
     NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                          code:errorCode
                                      userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
-    if (self.queuedFailureBlock) {
-        __weak DLSFTPConnection *weakSelf = self;
+    if (self.connectionFailureBlock) {
+        DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            if (weakSelf.queuedFailureBlock) {
-                weakSelf.queuedFailureBlock(error);
-                weakSelf.queuedFailureBlock = nil;
-            }
+            failureBlock(error);
         });
+        [self clearConnectionBlocks];
     }
 }
 
-- (DLSFTPRequest *)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
-                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    if (self.queuedSuccessBlock) {
+- (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
+                   failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+    if (self.connectionSuccessBlock || self.connectionFailureBlock) {
         // last connection not yet connected
-        [self failConnectionWithErrorCode:eSFTPClientErrorOperationInProgress
-                         errorDescription:@"Operation in progress"];
-        return nil;
-    } else if (   ([self.hostname length] == 0)
-               || ([self.username length] == 0)
-               || ([self.password length] == 0 && [self.keypath length] == 0)
-               || (self.port == 0)) {
-            // don't have valid arguments
+        NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                             code:eSFTPClientErrorOperationInProgress
+                                         userInfo:@{ NSLocalizedDescriptionKey : @"Connection in progress" }];
+        if (failureBlock) {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                failureBlock(error);
+            });
+        }
+        return;
+    }
+    self.connectionSuccessBlock = successBlock;
+    self.connectionFailureBlock = failureBlock;
+    if (   ([self.hostname length] == 0)
+        || ([self.username length] == 0)
+        || ([self.password length] == 0 && [self.keypath length] == 0)
+        || (self.port == 0)) {
+                // don't have valid arguments
         [self failConnectionWithErrorCode:eSFTPClientErrorInvalidArguments
                          errorDescription:@"Invalid arguments"];
-        return nil;
+        return;
     } else if(self.socket >= 0) {
         // already have a socket
         // last connection not yet connected
         [self failConnectionWithErrorCode:eSFTPClientErrorAlreadyConnected
                          errorDescription:@"Already connected"];
-        return nil;
+        return;
     } else {
-        self.queuedSuccessBlock = successBlock;
-        self.queuedFailureBlock = failureBlock;
-
         __weak DLSFTPConnection *weakSelf = self;
-        DLSFTPRequest *request = [DLSFTPRequest new];
-        [self addRequest:request];
         // set up a timeout handler
         __block dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
         dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
@@ -560,7 +561,7 @@ static const size_t cBufferSize = 8192;
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
                                  errorDescription:@"Connection timed out"];
             // clear out the queued success block
-            weakSelf.queuedSuccessBlock = nil;
+            weakSelf.connectionSuccessBlock = nil;
             dispatch_source_cancel(timeoutTimer);
         });
 
@@ -571,19 +572,6 @@ static const size_t cBufferSize = 8192;
             #endif
             timeoutTimer = NULL;
         });
-
-        // Cancel handler for connection requests
-        request.cancelHandler = ^{
-            if (timeoutTimer) {
-                dispatch_source_cancel(timeoutTimer);
-            }
-            dispatch_sync([weakSelf socketQueue], ^{
-                [weakSelf disconnectSocket];
-            });
-            [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
-                                 errorDescription:@"Cancelled by user"];
-            weakSelf.queuedSuccessBlock = nil;
-        };
 
         // start the timer
         if (timeoutTimer) {
@@ -597,7 +585,7 @@ static const size_t cBufferSize = 8192;
             if (weakSelf.socket == -1) {
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
                                      errorDescription:@"Unable to create socket"];
-                weakSelf.queuedSuccessBlock = nil;
+                weakSelf.connectionSuccessBlock = nil;
                 return;
             }
             struct sockaddr_in soin;
@@ -606,33 +594,21 @@ static const size_t cBufferSize = 8192;
             soin.sin_addr.s_addr = hostaddr;
 
             int result = connect(weakSelf.socket, (struct sockaddr*)(&soin),sizeof(struct sockaddr_in));
-            // connected, remove timeout operations
-            // The request cancel handler should not cancel the timeout timer from here on out
-            request.cancelHandler = ^{
-                dispatch_sync([weakSelf socketQueue], ^{
-                    [weakSelf disconnectSocket];
-                });
-                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
-                                     errorDescription:@"Cancelled by user"];
-                weakSelf.queuedSuccessBlock = nil;
-            };
             // cancel the timeout timer after connecting
             if (timeoutTimer) {
                 dispatch_source_cancel(timeoutTimer);
             }
             if (result == 0) {
                 // connected socket, start the SFTP session
-                [weakSelf startSFTPSessionWithRequest:request];
+                [weakSelf startSFTPSession];
             } else {
                 NSString *errorDescription = [NSString stringWithFormat:@"Unable to connect: socket error: %d", result];
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
                                      errorDescription:errorDescription];
-                weakSelf.queuedSuccessBlock = nil;
-                [weakSelf removeRequest:request];
+                weakSelf.connectionSuccessBlock = nil;
                 return;
             }
         });
-        return request;
     }
 }
 
@@ -641,6 +617,10 @@ static const size_t cBufferSize = 8192;
     dispatch_sync(_socketQueue, ^{
         [self disconnectSocket];
     });
+    if (self.connectionFailureBlock) { // not yet connected
+        [self failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
+                         errorDescription:@"Cancelled by user"];
+    }
 }
 
 #pragma mark SFTP

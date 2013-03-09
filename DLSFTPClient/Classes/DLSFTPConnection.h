@@ -61,8 +61,8 @@ int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
                keypath:(NSString *)keypath
             passphrase:(NSString *)passphrase;
 
-- (DLSFTPRequest *)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
-                              failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+- (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
+                   failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 - (void)disconnect;
 - (void)cancelAllRequests;
