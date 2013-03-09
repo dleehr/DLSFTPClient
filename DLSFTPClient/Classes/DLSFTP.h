@@ -69,7 +69,8 @@ typedef enum {
     eSFTPClientErrorUnableToOpenLocalFileForReading,
     eSFTPClientErrorUnableToWriteFile,
     eSFTPClientErrorUnableToMakeDirectory,
-    eSFTPClientErrorUnableToRename
+    eSFTPClientErrorUnableToRename,
+    eSFTPClientErrorUnableToRemove
 } eSFTPClientErrorCode;
 
 

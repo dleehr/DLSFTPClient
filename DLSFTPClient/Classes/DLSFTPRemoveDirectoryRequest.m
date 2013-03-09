@@ -53,7 +53,7 @@
 }
 
 - (void)start {
-    if ([self pathIsValid:self.directoryPath] == NO
+    if (   [self pathIsValid:self.directoryPath] == NO
         || [self ready] == NO
         || [self checkSftp] == NO) {
         [self.connection requestDidFail:self withError:self.error];
@@ -78,7 +78,7 @@
     if (result) {
         // unable to remove
         NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove directory: SFTP Status Code %d", result];
-        self.error = [self errorWithCode:eSFTPClientErrorUnableToRename
+        self.error = [self errorWithCode:eSFTPClientErrorUnableToRemove
                         errorDescription:errorDescription
                          underlyingError:@(result)];
         [self.connection requestDidFail:self withError:self.error];
@@ -97,6 +97,5 @@
     self.successBlock = nil;
     self.failureBlock = nil;
 }
-
 
 @end
