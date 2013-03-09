@@ -9,6 +9,8 @@
 #import "DLSFTPClientPrivateKeyTests.h"
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
+#import "DLSFTPListFilesRequest.h"
+
 #import "NSDictionary+SFTPFileAttributes.h"
 
 @interface DLSFTPClientPrivateKeyTests ()
@@ -66,14 +68,15 @@
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     static NSString *directoryPath = @"/Users/testuser/sftp-test";
-    [self.connection listFilesInDirectory:directoryPath
-                             successBlock:^(NSArray *array) {
-                                 dispatch_semaphore_signal(semaphore);
-                             }
-                             failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:directoryPath
+                                                                      successBlock:^(NSArray *array) {
+                                                                          dispatch_semaphore_signal(semaphore);
+                                                                      }
+                                                                      failureBlock:^(NSError *error) {
+                                                                          localError = error;
+                                                                          dispatch_semaphore_signal(semaphore);
+                                                                      }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
