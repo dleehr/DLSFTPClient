@@ -80,7 +80,8 @@ static const size_t cBufferSize = 8192;
 - (void)start {
     if (   [self pathIsValid:self.localPath] == NO
         || [self pathIsValid:self.remotePath] == NO
-        || [self ready] == NO) {
+        || [self ready] == NO
+        || [self checkSftp] == NO) {
         [self.connection requestDidFail:self withError:self.error];
         return;
     }
@@ -104,10 +105,6 @@ static const size_t cBufferSize = 8192;
         return;
     }
 
-    if([self checkSftp] == NO) {
-        [self.connection requestDidFail:self withError:self.error];
-        return;
-    }
     LIBSSH2_SESSION *session = [self.connection session];
     int socketFD = [self.connection socket];
 

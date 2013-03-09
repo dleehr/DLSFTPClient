@@ -63,7 +63,8 @@ static const size_t cBufferSize = 8192;
 
 - (void)start {
     if (   [self pathIsValid:self.directoryPath] == NO
-        || [self ready] == NO) {
+        || [self ready] == NO
+        || [self checkSftp] == NO) {
         [self.connection requestDidFail:self withError:self.error];
         return;
     }
