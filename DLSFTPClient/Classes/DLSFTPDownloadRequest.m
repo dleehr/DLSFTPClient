@@ -64,7 +64,7 @@ static const size_t cBufferSize = 8192;
 
 - (id)initWithRemotePath:(NSString *)remotePath
                localPath:(NSString *)localPath
-            shouldresume:(BOOL)shouldResume
+                  resume:(BOOL)resumeIfFileExists
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock
            progressBlock:(DLSFTPClientProgressBlock)progressBlock {
@@ -72,7 +72,7 @@ static const size_t cBufferSize = 8192;
     if (self) {
         self.remotePath = remotePath;
         self.localPath = localPath;
-        self.shouldResume = shouldResume;
+        self.shouldResume = resumeIfFileExists;
         self.successBlock = successBlock;
         self.failureBlock = failureBlock;
         self.progressBlock = progressBlock;

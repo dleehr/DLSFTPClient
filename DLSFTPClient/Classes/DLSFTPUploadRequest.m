@@ -33,10 +33,10 @@ static const size_t cBufferSize = 8192;
 @implementation DLSFTPUploadRequest
 
 - (id)initWithRemotePath:(NSString *)remotePath
-               localpath:(NSString *)localPath
-           progressBlock:(DLSFTPClientProgressBlock)progressBlock
+               localPath:(NSString *)localPath
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
+            failureBlock:(DLSFTPClientFailureBlock)failureBlock
+           progressBlock:(DLSFTPClientProgressBlock)progressBlock {
     self = [super init];
     if (self) {
         self.remotePath = remotePath;

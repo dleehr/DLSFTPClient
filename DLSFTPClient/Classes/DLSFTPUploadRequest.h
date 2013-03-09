@@ -11,8 +11,9 @@
 @interface DLSFTPUploadRequest : DLSFTPRequest
 
 - (id)initWithRemotePath:(NSString *)remotePath
-               localpath:(NSString *)localPath
-           progressBlock:(DLSFTPClientProgressBlock)progressBlock
+               localPath:(NSString *)localPath
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock;
+            failureBlock:(DLSFTPClientFailureBlock)failureBlock
+           progressBlock:(DLSFTPClientProgressBlock)progressBlock;
+
 @end

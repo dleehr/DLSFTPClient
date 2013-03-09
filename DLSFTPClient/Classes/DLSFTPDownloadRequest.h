@@ -36,7 +36,7 @@
 
 - (id)initWithRemotePath:(NSString *)remotePath
                localPath:(NSString *)localPath
-            shouldresume:(BOOL)shouldResume
+                  resume:(BOOL)resumeIfFileExists
             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock
            progressBlock:(DLSFTPClientProgressBlock)progressBlock;

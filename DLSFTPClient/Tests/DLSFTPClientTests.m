@@ -210,15 +210,16 @@
                                                                                          error:&localError];
     STAssertNil(localError, localError.localizedDescription);
     DLSFTPRequest *request = [[DLSFTPUploadRequest alloc] initWithRemotePath:destPath
-                                                                   localpath:self.testFilePath
-                                                               progressBlock:nil
+                                                                   localPath:self.testFilePath
                                                                 successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                                                     dispatch_semaphore_signal(semaphore);
                                                                 }
                                                                 failureBlock:^(NSError *error) {
                                                                     localError = error;
                                                                     dispatch_semaphore_signal(semaphore);
-                                                                }];
+                                                                }
+                                                               progressBlock:nil
+                              ];
     [self.connection submitRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
@@ -267,7 +268,7 @@
 
     DLSFTPRequest *request = [[DLSFTPDownloadRequest alloc] initWithRemotePath:remotePath
                                                                      localPath:localPath
-                                                                  shouldresume:NO
+                                                                        resume:NO
                                                                   successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                                                       dispatch_semaphore_signal(semaphore);
                                                                   }
@@ -395,21 +396,21 @@
     // Use the progress block to cancel the request at 50%
     __block DLSFTPRequest *request = nil;
     request = [[DLSFTPUploadRequest alloc] initWithRemotePath:destPath
-                                                    localpath:self.testFilePath
-                                                progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
-                                                    STAssertFalse(request.isCancelled, @"Progress block called with cancelled request");
-                                                    // cancel at 50%
-                                                    if (bytesSent * 2 >= bytesTotal) {
-                                                        [request cancel];
-                                                    }
-                                                }
+                                                    localPath:self.testFilePath
                                                  successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                                     dispatch_semaphore_signal(semaphore);
                                                 }
                                                  failureBlock:^(NSError *error) {
                                                      localError = error;
                                                      dispatch_semaphore_signal(semaphore);
-                                                 }];
+                                                 }
+                                                progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
+                                                    STAssertFalse(request.isCancelled, @"Progress block called with cancelled request");
+                                                    // cancel at 50%
+                                                    if (bytesSent * 2 >= bytesTotal) {
+                                                        [request cancel];
+                                                    }
+                                                }];
     [self.connection submitRequest:request];
 
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
@@ -439,7 +440,7 @@
     __block DLSFTPRequest *request = nil;
     request = [[DLSFTPDownloadRequest alloc] initWithRemotePath:remotePath
                                                       localPath:localPath
-                                                   shouldresume:NO
+                                                         resume:NO
                                                    successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                                        dispatch_semaphore_signal(semaphore);
                                                    }
@@ -477,7 +478,7 @@
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     DLSFTPRequest *request = [[DLSFTPDownloadRequest alloc] initWithRemotePath:remotePath
                                                                      localPath:localPath
-                                                                  shouldresume:NO
+                                                                        resume:NO
                                                                   successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
                                                                       dispatch_semaphore_signal(semaphore);
                                                                   }
