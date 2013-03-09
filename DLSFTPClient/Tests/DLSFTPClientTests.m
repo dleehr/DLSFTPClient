@@ -34,6 +34,7 @@
 #import "DLSFTPFile.h"
 #import "NSDictionary+SFTPFileAttributes.h"
 #import "DLSFTPListFilesRequest.h"
+#import "DLSFTPMakeDirectoryRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -94,19 +95,18 @@
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     static NSString *directoryPath = @"/Users/testuser/sftp-test";
-    DLSFTPListFilesRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:directoryPath
-                                                                               successBlock:^(NSArray *array) {
-                                                                                dispatch_semaphore_signal(semaphore);
-                                                                            }
-                                                                               failureBlock:^(NSError *error) {
-                                                                                localError = error;
-                                                                                dispatch_semaphore_signal(semaphore);
-                                                                            }];
+    DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:directoryPath
+                                                                      successBlock:^(NSArray *array) {
+                                                                          dispatch_semaphore_signal(semaphore);
+                                                                      }
+                                                                      failureBlock:^(NSError *error) {
+                                                                          localError = error;
+                                                                          dispatch_semaphore_signal(semaphore);
+                                                                      }];
     [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-/*
 
 - (void)test03MkDir {
     [self test01Connect];
@@ -116,37 +116,41 @@
     NSString *basePath = self.connectionInfo[@"basePath"];
     NSString *directoryName = self.connectionInfo[@"directoryName"];
     NSString *fullPath = [basePath stringByAppendingPathComponent:directoryName];
-    [self.connection makeDirectory:fullPath
-                      successBlock:^(DLSFTPFile *fileOrDirectory) {
-                          STAssertEqualObjects(fileOrDirectory.filename, directoryName, @"File name does not match");
-                          dispatch_semaphore_signal(semaphore);
-                      } failureBlock:^(NSError *error) {
-                          localError = error;
-                          dispatch_semaphore_signal(semaphore);
-                      }];
+    DLSFTPRequest *request = [[DLSFTPMakeDirectoryRequest alloc] initWithDirectoryPath:fullPath
+                                                                          successBlock:^(DLSFTPFile *fileOrDirectory) {
+                                                                                        STAssertEqualObjects(fileOrDirectory.filename, directoryName, @"File name does not match");
+                                                                                        dispatch_semaphore_signal(semaphore);
+                                                                                    }
+                                                                                    failureBlock:^(NSError *error) {
+                                                                                        localError = error;
+                                                                                        dispatch_semaphore_signal(semaphore);
+                                                                                    }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
-    // make sure the directory appears in the list
     semaphore = dispatch_semaphore_create(0);
-    [self.connection listFilesInDirectory:basePath
-                             successBlock:^(NSArray *array) {
-                                 __block BOOL foundDirectory = NO;
-                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
-                                     if ([file.filename isEqualToString:directoryName]) {
-                                         *stop = foundDirectory = YES;
-                                     }
-                                 }];
-                                 STAssertTrue(foundDirectory, @"Created directory was not found in listing");
-                                 dispatch_semaphore_signal(semaphore);
-                             } failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    // make sure the directory appears in the list
+    request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:basePath
+                                                       successBlock:^(NSArray *array) {
+                                                           __block BOOL foundDirectory = NO;
+                                                           [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                                               if ([file.filename isEqualToString:directoryName]) {
+                                                                   *stop = foundDirectory = YES;
+                                                               }
+                                                           }];
+                                                           STAssertTrue(foundDirectory, @"Created directory was not found in listing");
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }
+                                                       failureBlock:^(NSError *error) {
+                                                           localError = error;
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 }
-
+/*
 - (void)test04RmDir {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
