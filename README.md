@@ -13,28 +13,46 @@ DLSFTPClient is a work in progress.  The API is subject to change, and there is 
 
 ## Sample Usage
 
-Most of the functionality is accessed via DLSFTPConnection.  Instances of this object store the hostname and credentials.
+You'll need to initialize a `DLSFTPConnection` object with the host and credentials.  Simple username/password as well as private key authentication are supported.
 
     DLSFTPConnection *connection = [[DLSFTPConnection alloc] initWithHostname:@"foo.bar.com"
                                                                          port:22
                                                                      username:@"username"
                                                                      password:@"password"];
                                                                      
-The operation methods take blocks as arguments
+To establish a connection, use `connectWithSuccessBlock:failureBlock:`
 
-    [connection downloadFileAtRemotePath:@"/Users/username/Desktop/file.txt"
-                             toLocalPath:@"/path/to/sandbox/Documents/file.txt"
-                                progressBlock:^(unsigned long long bytesSent, unsigned long long bytesTotal) {
-                                    NSLog(@"Received %llu bytes", bytesSent);
-                               } successBlock:^(DLSFTPFile *file, NSDate *startTime, NSDate *finishTime) {
-                                    NSLog(@"Completed transfer of %@", file.filename");
-                                } failureBlock:^(NSError *error) {
-                                    NSLog(@"Transfer failed: %@", error);
-                                }];
+    DLSFTPClientSuccessBlock successBlock = ^{ ... };
+    DLSFTPClientFailureBlock failureBlock = ^(NSError *error) { ... };
+    [connection connectWithSuccessBlock:successBlock
+                           failureBlock:failureBlock];
 
-Blocks are dispatched to the global concurrent queue.                                                                     
+To disconnect, use `disconnect`
 
     [connection disconnect];
+
+Blocks are dispatched to the global concurrent queue.  Be sure to dispatch back to the main queue if you need to drive UI updates.                                                                     
+
+Operations such as listing directory contents, downloading files, and moving/renaming are carried out through subclasses of `DLSFTPRequest`:
+
+    DLSFTPClientArraySuccessBlock successBlock = ^(NSArray *files) {
+        for (DLSFTPFile *sftpFile in files) {
+            NSLog(@"File: %@", sftpFile.filename);
+        }
+    };
+
+    DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
+        NSLog(@"Error listing files: %@", error);
+    };
+    
+    DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:@"/Users/dan/"
+                                                                      successBlock:successBlock
+                                                                      failureBlock:failureBlock];
+    [connection submitRequest:request];
+
+The `DLSFTPFile` class is used to encapsulate file paths and metadata.
+
+When uploading and downloading files, a progress block may be provided.  The progress block will be dispatched by the connection as it is transferring the file, and can be used to monitor progress.
 
 ## Features
 
@@ -45,9 +63,13 @@ Blocks are dispatched to the global concurrent queue.
 5. Remove files/directories
 6. Operations can be cancelled
 
-## To-do
+## Testing
 
-Quite a bit, including writing a proper To-do list here.
+DLSFTPClient includes two test case classes.  To use them, you'll need to copy `ConnectionInfo-template.plist` to `ConnectionInfo.plist` and update the values with credentials and file paths for your own server.  To test private key authentication, you'll need to add a `privatekey.pem` file as well.
+
+## Remaining issues
+
+The Demo App is incomplete and needs some polish.  On 2013-03-09, the entire connection/request architecture was refactored.  The app passes all of its unit tests.
 
 ## Project Dependencies
 
