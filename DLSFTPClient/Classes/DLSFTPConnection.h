@@ -67,52 +67,11 @@ int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
 - (void)disconnect;
 - (void)cancelAllRequests;
 - (BOOL)isConnected;
-- (NSUInteger)requestCount;
 
+# pragma mark - Request
+
+- (NSUInteger)requestCount;
 - (void)submitRequest:(DLSFTPRequest *)request;
 - (void)removeRequest:(DLSFTPRequest *)request;
-
-#pragma mark Directory Operations
-
-- (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
-                           successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-                           failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-- (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
-                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                    failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-#pragma mark Metadata Operations
-
-- (DLSFTPRequest *)renameOrMoveItemAtRemotePath:(NSString *)remotePath
-                                    withNewPath:(NSString *)newPath
-                                   successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                                   failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-- (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
-            successBlock:(DLSFTPClientSuccessBlock)successBlock
-            failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-- (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
-                            successBlock:(DLSFTPClientSuccessBlock)successBlock
-                            failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-
-#pragma mark File Transfer
-// progressBlock uses dispatch_source_merge_data.
-// It may not reach 100%, intended to be used for UI updates only
-
-- (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
-                                toLocalPath:(NSString *)localPath
-                                     resume:(BOOL)resume
-                              progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                               successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                               failureBlock:(DLSFTPClientFailureBlock)failureBlock;
-
-- (DLSFTPRequest *)uploadFileToRemotePath:(NSString *)remotePath
-                            fromLocalPath:(NSString *)localPath
-                            progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                             failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
 @end

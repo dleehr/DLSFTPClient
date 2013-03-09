@@ -49,12 +49,12 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 // may be called by the connection or the end user
 - (void)cancel;
 
-// these methods are called by the connection
+// Only the connection should call these methods
 - (void)start; // subclasses must override
 - (void)succeed; // subclasses must override and invoke their success blocks
 - (void)fail; // subclasses need not override this
 
-// Only subclasses should call these
+// Only subclasses should call these methods
 - (BOOL)ready;
 - (BOOL)pathIsValid:(NSString *)path;
 - (BOOL)checkSftp;

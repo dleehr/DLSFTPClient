@@ -35,6 +35,7 @@
 #include "libssh2.h"
 #include "libssh2_config.h"
 #include "libssh2_sftp.h"
+#import "DLSFTPConnection.h"
 #import "DLSFTPRequest.h"
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
@@ -53,43 +54,13 @@ NSString * const SFTPClientUnderlyingErrorKey = @"SFTPClientUnderlyingError";
 static const NSUInteger cDefaultSSHPort = 22;
 static const NSTimeInterval cDefaultConnectionTimeout = 15.0;
 static const NSTimeInterval cIdleTimeout = 60.0;
-static const size_t cBufferSize = 8192;
 static NSString * const SFTPClientCompleteRequestException = @"SFTPClientCompleteRequestException";
-
-#import "DLSFTPConnection.h"
-#import "DLSFTPFile.h"
-#import "NSDictionary+SFTPFileAttributes.h"
-
-// goes away
-
-#define CHECK_REQUEST_CANCELLED if (request.isCancelled) { \
-    [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser \
-               errorDescription:@"Cancelled by user" \
-                underlyingError:nil \
-                   failureBlock:failureBlock]; \
-    [weakSelf removeRequest:request]; \
-    return; \
-}
-
-// goes away
-
-#define CHECK_PATH(path) if ([path length] == 0) { \
-    [weakSelf failWithErrorCode:eSFTPClientErrorInvalidArguments \
-               errorDescription:@"Invalid path" \
-                underlyingError:nil \
-                   failureBlock:failureBlock]; \
-    [weakSelf removeRequest:request]; \
-    return; \
-}
 
 
 @interface DLSFTPConnection () {
 
     // socket queue
     dispatch_queue_t _socketQueue;
-
-    // file IO
-    dispatch_queue_t _fileIOQueue; // not necessary
 
     // request queue
     dispatch_queue_t _requestQueue;
@@ -101,7 +72,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_source_t _idleTimer;
 }
 
-// These blocks are only used for connection operation, name them so
 @property (nonatomic, copy) DLSFTPClientSuccessBlock connectionSuccessBlock;
 @property (nonatomic, copy) DLSFTPClientFailureBlock connectionFailureBlock;
 
@@ -196,7 +166,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         self.socket = -1;
         self.requests = [[NSMutableArray alloc] init];
         _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
-        _fileIOQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.fileio", DISPATCH_QUEUE_SERIAL);
         _requestQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.request", DISPATCH_QUEUE_CONCURRENT);
         _connectionGroup = dispatch_group_create();
         _idleTimer = NULL; // lazily loaded
@@ -210,8 +179,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     _requestQueue = NULL;
     dispatch_release(_socketQueue);
     _socketQueue = NULL;
-    dispatch_release(_fileIOQueue);
-    _fileIOQueue = NULL;
     dispatch_release(_connectionGroup);
     _connectionGroup = NULL;
     dispatch_release(_idleTimer);
@@ -222,9 +189,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (dispatch_queue_t)socketQueue {
     return _socketQueue;
-}
-- (dispatch_queue_t)fileIOQueue {
-    return _fileIOQueue;
 }
 - (dispatch_queue_t)requestQueue {
     return _requestQueue;
@@ -509,6 +473,20 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_source_set_timer([self idleTimer], DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
 }
 
+- (void)failConnectionWithErrorCode:(eSFTPClientErrorCode)errorCode
+                   errorDescription:(NSString *)errorDescription {
+    NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                         code:errorCode
+                                     userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
+    if (self.connectionFailureBlock) {
+        DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            failureBlock(error);
+        });
+        [self clearConnectionBlocks];
+    }
+}
+
 #pragma mark Public
 
 - (void)cancelAllRequests {
@@ -535,20 +513,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 // just if the socket is connected
 - (BOOL)isConnected {
     return self.socket >= 0;
-}
-
-- (void)failConnectionWithErrorCode:(eSFTPClientErrorCode)errorCode
-         errorDescription:(NSString *)errorDescription {
-    NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                         code:errorCode
-                                     userInfo:@{ NSLocalizedDescriptionKey : errorDescription }];
-    if (self.connectionFailureBlock) {
-        DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            failureBlock(error);
-        });
-        [self clearConnectionBlocks];
-    }
 }
 
 - (void)connectWithSuccessBlock:(DLSFTPClientSuccessBlock)successBlock
@@ -658,85 +622,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
                          errorDescription:@"Cancelled by user"];
     }
 }
-
-#pragma mark SFTP
-
-// This goes away
-- (void)failWithErrorCode:(eSFTPClientErrorCode)errorCode
-         errorDescription:(NSString *)errorDescription
-          underlyingError:(NSNumber *)underlyingError
-             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    NSError *error = nil;
-    if (underlyingError == nil) {
-        error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                    code:errorCode
-                                userInfo:@{ NSLocalizedDescriptionKey : errorDescription }
-                 ];
-    } else {
-        error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                    code:errorCode
-                                userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : underlyingError }
-                 ];
-    }
-
-    if (failureBlock) {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            failureBlock(error);
-        });
-    }
-}
-
-// list files
-- (DLSFTPRequest *)listFilesInDirectory:(NSString *)directoryPath
-                           successBlock:(DLSFTPClientArraySuccessBlock)successBlock
-                           failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-- (DLSFTPRequest *)makeDirectory:(NSString *)directoryPath
-                    successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                    failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-- (DLSFTPRequest *)renameOrMoveItemAtRemotePath:(NSString *)remotePath
-                                    withNewPath:(NSString *)newPath
-                                   successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
-                                   failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-- (DLSFTPRequest *)removeFileAtPath:(NSString *)remotePath
-                       successBlock:(DLSFTPClientSuccessBlock)successBlock
-                       failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-- (DLSFTPRequest *)removeDirectoryAtPath:(NSString *)remotePath
-                            successBlock:(DLSFTPClientSuccessBlock)successBlock
-                            failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-// should make custom DLSFTPRequest subclasses that do things?
-- (DLSFTPRequest *)downloadFileAtRemotePath:(NSString *)remotePath
-                                toLocalPath:(NSString *)localPath
-                                     resume:(BOOL)resume
-                              progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                               successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                               failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
-
-- (DLSFTPRequest *)uploadFileToRemotePath:(NSString *)remotePath
-                            fromLocalPath:(NSString *)localPath
-                            progressBlock:(DLSFTPClientProgressBlock)progressBlock
-                             successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
-                             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    return nil;
-}
-
 
 @end
 
