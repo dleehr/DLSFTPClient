@@ -36,22 +36,22 @@
 
 @interface DLSFTPMoveRenameRequest ()
 
-@property (nonatomic, copy) NSString *remotePath;
-@property (nonatomic, copy) NSString *newPath;
-@property (nonatomic, strong) DLSFTPFile *movedItem;
+@property (nonatomic, copy) NSString *sourcePath;
+@property (nonatomic, copy) NSString *destinationPath;
+@property (nonatomic, strong) DLSFTPFile *destinationItem;
 
 @end
 
 @implementation DLSFTPMoveRenameRequest
 
-- (id)initWithRemotePath:(NSString *)remotePath
-                 newPath:(NSString *)newPath
+- (id)initWithSourcePath:(NSString *)sourcePath
+         destinationPath:(NSString *)destinationPath
             successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock {
     self = [super init];
     if(self) {
-        self.remotePath = remotePath;
-        self.newPath = newPath;
+        self.sourcePath = sourcePath;
+        self.destinationPath = destinationPath;
         self.successBlock = successBlock;
         self.failureBlock = failureBlock;
     }
@@ -59,8 +59,8 @@
 }
 
 - (void)start {
-    if (   [self pathIsValid:self.remotePath] == NO
-        || [self pathIsValid:self.newPath] == NO
+    if (   [self pathIsValid:self.sourcePath] == NO
+        || [self pathIsValid:self.destinationPath] == NO
         || [self ready] == NO
         || [self checkSftp] == NO) {
         [self.connection requestDidFail:self withError:self.error];
@@ -72,7 +72,7 @@
     int result;
 
     // libssh2_sftp_rename includes overwrite | atomic | native
-    while(  ((result = (libssh2_sftp_rename(sftp, [self.remotePath UTF8String], [self.newPath UTF8String]))) == LIBSSH2SFTP_EAGAIN)
+    while(  ((result = (libssh2_sftp_rename(sftp, [self.sourcePath UTF8String], [self.destinationPath UTF8String]))) == LIBSSH2SFTP_EAGAIN)
           && self.isCancelled == NO) {
         waitsocket(socketFD, session);
     }
@@ -95,7 +95,7 @@
     // item renamed, stat the new item
     // can use stat since we don't need a descriptor
     LIBSSH2_SFTP_ATTRIBUTES attributes;
-    while (  ((result = libssh2_sftp_stat(sftp, [self.newPath UTF8String], &attributes)) == LIBSSH2SFTP_EAGAIN)
+    while (  ((result = libssh2_sftp_stat(sftp, [self.destinationPath UTF8String], &attributes)) == LIBSSH2SFTP_EAGAIN)
            && self.isCancelled == NO) {
         waitsocket(socketFD, session);
     }
@@ -117,18 +117,18 @@
 
     // attributes are valid
     NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
-    DLSFTPFile *movedItem = [[DLSFTPFile alloc] initWithPath:self.newPath
+    DLSFTPFile *destinationItem = [[DLSFTPFile alloc] initWithPath:self.destinationPath
                                                   attributes:attributesDictionary];
-    self.movedItem = movedItem;
+    self.destinationItem = destinationItem;
     [self.connection requestDidComplete:self];
 }
 
 - (void)succeed {
     DLSFTPClientFileMetadataSuccessBlock successBlock = self.successBlock;
-    DLSFTPFile *movedItem = self.movedItem;
+    DLSFTPFile *destinationItem = self.destinationItem;
     if (successBlock) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            successBlock(movedItem);
+            successBlock(destinationItem);
         });
     }
     self.successBlock = nil;

@@ -33,8 +33,8 @@
 
 @interface DLSFTPMoveRenameRequest : DLSFTPRequest
 
-- (id)initWithRemotePath:(NSString *)remotePath
-                 newPath:(NSString *)newPath
+- (id)initWithSourcePath:(NSString *)sourcePath
+         destinationPath:(NSString *)destinationPath
             successBlock:(DLSFTPClientFileMetadataSuccessBlock)successBlock
             failureBlock:(DLSFTPClientFailureBlock)failureBlock;
 
