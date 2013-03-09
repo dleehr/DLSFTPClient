@@ -39,6 +39,7 @@
 #import "DLSFTPUploadRequest.h"
 #import "DLSFTPDownloadRequest.h"
 #import "DLSFTPMoveRenameRequest.h"
+#import "DLSFTPRemoveFileRequest.h"
 
 @interface DLSFTPClientTests ()
 
@@ -337,7 +338,6 @@
     STAssertNil(localError, localError.localizedDescription);
 }
 
-/*
 - (void)test08Delete {
     [self test01Connect];
     STAssertTrue([self.connection isConnected], @"Not connected");
@@ -347,36 +347,41 @@
     // delete the recently renamed file
     NSString *deleteFileName = self.connectionInfo[@"newName"];
     NSString *remoteDeletePath = [basePath stringByAppendingPathComponent:deleteFileName];
-    [self.connection removeFileAtPath:remoteDeletePath
-                         successBlock:^{
-                             dispatch_semaphore_signal(semaphore);
-                         } failureBlock:^(NSError *error) {
-                             localError = error;
-                             dispatch_semaphore_signal(semaphore);
-                         }];
+    DLSFTPRequest *request = [[DLSFTPRemoveFileRequest alloc] initWithFilePath:remoteDeletePath
+                                                                  successBlock:^{
+                                                                      dispatch_semaphore_signal(semaphore);
+                                                                  }
+                                                                  failureBlock:^(NSError *error) {
+                                                                      localError = error;
+                                                                      dispatch_semaphore_signal(semaphore);
+                                                                  }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
     // check the listing to make sure the file is gone
     semaphore = dispatch_semaphore_create(0);
-    [self.connection listFilesInDirectory:basePath
-                             successBlock:^(NSArray *array) {
-                                 __block BOOL foundDeletedFile = NO;
-                                 [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
-                                     if ([file.filename isEqualToString:deleteFileName]) {
-                                         *stop = foundDeletedFile = YES;
-                                     }
-                                 }];
-                                 STAssertFalse(foundDeletedFile, @"Deleted file was found in listing but should not have been");
-                                 dispatch_semaphore_signal(semaphore);
-                             } failureBlock:^(NSError *error) {
-                                 localError = error;
-                                 dispatch_semaphore_signal(semaphore);
-                             }];
+    request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:basePath
+                                                       successBlock:^(NSArray *array) {
+                                                           __block BOOL foundDeletedFile = NO;
+                                                           [array enumerateObjectsUsingBlock:^(DLSFTPFile *file, NSUInteger idx, BOOL *stop) {
+                                                               if ([file.filename isEqualToString:deleteFileName]) {
+                                                                   *stop = foundDeletedFile = YES;
+                                                               }
+                                                           }];
+                                                           STAssertFalse(foundDeletedFile, @"Deleted file was found in listing but should not have been");
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }
+                                                       failureBlock:^(NSError *error) {
+                                                           localError = error;
+                                                           dispatch_semaphore_signal(semaphore);
+                                                       }];
+    [self.connection addRequest:request];
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     STAssertNil(localError, localError.localizedDescription);
 
 }
+/*
 
 - (void)test09CancelUpload {
     [self test01Connect];
