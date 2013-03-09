@@ -28,6 +28,7 @@
 		375BDAA716EAD62200E96C64 /* DLSFTPMakeDirectoryRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDAA616EAD62200E96C64 /* DLSFTPMakeDirectoryRequest.m */; };
 		375BDAAA16EAE26C00E96C64 /* DLSFTPRemoveDirectoryRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDAA916EAE26C00E96C64 /* DLSFTPRemoveDirectoryRequest.m */; };
 		375BDAAD16EAE4ED00E96C64 /* DLSFTPUploadRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDAAC16EAE4ED00E96C64 /* DLSFTPUploadRequest.m */; };
+		375BDAB316EB881E00E96C64 /* DLSFTPMoveRenameRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 375BDAB216EB881E00E96C64 /* DLSFTPMoveRenameRequest.m */; };
 		375D47F615F0402300BB8B79 /* FileUploadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F515F0402300BB8B79 /* FileUploadViewController.m */; };
 		375D47FA15F1939E00BB8B79 /* UploadFilePickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 375D47F915F1939E00BB8B79 /* UploadFilePickerViewController.m */; };
 		3788412716CF2CAA00CBCB2D /* libDLSFTPClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 372F7BE4162CDDE60038F852 /* libDLSFTPClient.a */; };
@@ -120,6 +121,8 @@
 		375BDAA916EAE26C00E96C64 /* DLSFTPRemoveDirectoryRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPRemoveDirectoryRequest.m; sourceTree = "<group>"; };
 		375BDAAB16EAE4ED00E96C64 /* DLSFTPUploadRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPUploadRequest.h; sourceTree = "<group>"; };
 		375BDAAC16EAE4ED00E96C64 /* DLSFTPUploadRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPUploadRequest.m; sourceTree = "<group>"; };
+		375BDAB116EB881E00E96C64 /* DLSFTPMoveRenameRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLSFTPMoveRenameRequest.h; sourceTree = "<group>"; };
+		375BDAB216EB881E00E96C64 /* DLSFTPMoveRenameRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLSFTPMoveRenameRequest.m; sourceTree = "<group>"; };
 		375D47F415F0402300BB8B79 /* FileUploadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileUploadViewController.h; sourceTree = "<group>"; };
 		375D47F515F0402300BB8B79 /* FileUploadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileUploadViewController.m; sourceTree = "<group>"; };
 		375D47F815F1939E00BB8B79 /* UploadFilePickerViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UploadFilePickerViewController.h; sourceTree = "<group>"; };
@@ -252,6 +255,8 @@
 				375BDAA916EAE26C00E96C64 /* DLSFTPRemoveDirectoryRequest.m */,
 				375BDAAB16EAE4ED00E96C64 /* DLSFTPUploadRequest.h */,
 				375BDAAC16EAE4ED00E96C64 /* DLSFTPUploadRequest.m */,
+				375BDAB116EB881E00E96C64 /* DLSFTPMoveRenameRequest.h */,
+				375BDAB216EB881E00E96C64 /* DLSFTPMoveRenameRequest.m */,
 			);
 			name = Classes;
 			path = DLSFTPClient/Classes;
@@ -461,6 +466,7 @@
 				375BDAA716EAD62200E96C64 /* DLSFTPMakeDirectoryRequest.m in Sources */,
 				375BDAAA16EAE26C00E96C64 /* DLSFTPRemoveDirectoryRequest.m in Sources */,
 				375BDAAD16EAE4ED00E96C64 /* DLSFTPUploadRequest.m in Sources */,
+				375BDAB316EB881E00E96C64 /* DLSFTPMoveRenameRequest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
