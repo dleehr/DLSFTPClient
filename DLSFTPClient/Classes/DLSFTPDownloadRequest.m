@@ -108,6 +108,7 @@ static const size_t cBufferSize = 8192;
            && self.isCancelled == NO) {
         waitsocket(socketFD, session);
     }
+    self.handle = handle;
     if (handle == NULL) {
         // unable to open
         unsigned long lastError = libssh2_sftp_last_error([self.connection sftp]);
@@ -117,7 +118,6 @@ static const size_t cBufferSize = 8192;
                          underlyingError:@(lastError)];
         return NO;
     } else {
-        self.handle = handle;
         return YES;
     }
 }
@@ -329,8 +329,11 @@ static const size_t cBufferSize = 8192;
     LIBSSH2_SESSION *session = [self.connection session];
     if (self.isCancelled) {
         // cancelled by user
-        while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
-            waitsocket(socketFD, session);
+        if (self.handle) {
+            while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
+                waitsocket(socketFD, session);
+            }
+            self.handle = NULL;
         }
 
         // delete the file if not resumable
@@ -349,8 +352,11 @@ static const size_t cBufferSize = 8192;
 
     // now close the remote handle
     int result = 0;
-    while((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN) {
-        waitsocket(socketFD, session);
+    if (self.handle) {
+        while((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN) {
+            waitsocket(socketFD, session);
+        }
+        self.handle = NULL;
     }
     if (result) {
         NSString *errorDescription = [NSString stringWithFormat:@"Close file handle failed with code %d", result];
@@ -368,8 +374,11 @@ static const size_t cBufferSize = 8192;
     int result = libssh2_sftp_last_error([self.connection sftp]);
     int socketFD = [self.connection socket];
     LIBSSH2_SESSION *session = [self.connection session];
-    while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
-        waitsocket(socketFD, session);
+    if (self.handle) {
+        while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
+            waitsocket(socketFD, session);
+        }
+        self.handle = NULL;
     }
     // error reading
     NSString *errorDescription = [NSString stringWithFormat:@"Read file failed with code %d.", result];

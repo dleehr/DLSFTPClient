@@ -85,7 +85,7 @@ static const size_t cBufferSize = 8192;
            && self.isCancelled == NO) {
         waitsocket(socketFD, session);
     }
-
+    self.handle = handle;
     if (handle == NULL) {
         // unable to open
         unsigned long lastError = libssh2_sftp_last_error([self.connection sftp]);
@@ -95,7 +95,6 @@ static const size_t cBufferSize = 8192;
                          underlyingError:@(lastError)];
         return NO;
     } else {
-        self.handle = handle;
         return YES;
     }
 }
@@ -244,10 +243,12 @@ static const size_t cBufferSize = 8192;
 
     if (self.isCancelled) {
         // Cancelled by user
-        while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
-            waitsocket(socketFD, session);
+        if(self.handle) {
+            while(libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN) {
+                waitsocket(socketFD, session);
+            }
+            self.handle = NULL;
         }
-
         // delete remote file on cancel?
         self.error = [self errorWithCode:eSFTPClientErrorCancelledByUser
                         errorDescription:@"Cancelled by user."
@@ -269,9 +270,12 @@ static const size_t cBufferSize = 8192;
     if (self.sftp_result < 0) { // error on last call to upload
         // get the error before closing the file
         int result = libssh2_sftp_last_error(sftp);
-        while(   (libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN)
-              && self.isCancelled == NO) {
-            waitsocket(socketFD, session);
+        if(self.handle) {
+            while(   (libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN)
+                  && self.isCancelled == NO) {
+                waitsocket(socketFD, session);
+            }
+            self.handle = NULL;
         }
         if ([self ready] == NO) {
             [self.connection requestDidFail:self withError:self.error];
@@ -307,9 +311,12 @@ static const size_t cBufferSize = 8192;
     }
 
     // now close the remote handle
-    while(   ((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN)
-          && self.isCancelled == NO) {
-        waitsocket(socketFD, session);
+    if(self.handle) {
+        while(   ((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN)
+              && self.isCancelled == NO) {
+            waitsocket(socketFD, session);
+        }
+        self.handle = NULL;
     }
     if ([self ready] == NO) {
         [self.connection requestDidFail:self withError:self.error];
