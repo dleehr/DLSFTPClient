@@ -123,9 +123,12 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)start {
-    if ([self pathIsValid:self.localPath] == NO) { return; }
-    if ([self pathIsValid:self.remotePath] == NO) { return; }
-    if ([self ready] == NO) { return; }
+    if (   [self pathIsValid:self.localPath] == NO
+        || [self pathIsValid:self.remotePath] == NO
+        || [self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     unsigned long long resumeOffset = 0ull;
     if ([[NSFileManager defaultManager] fileExistsAtPath:self.localPath] == NO) {
         // File does not exist, create it
@@ -141,6 +144,7 @@ static const size_t cBufferSize = 8192;
             self.error = [self errorWithCode:eSFTPClientErrorUnableToReadFile
                             errorDescription:@"Unable to get attributes (file size) of existing file"
                              underlyingError:@(error.code)];
+            [self.connection requestDidFail:self withError:self.error];
             return;
         }
 
@@ -153,14 +157,21 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToOpenLocalFileForWriting
                         errorDescription:@"Local file is not writable"
                          underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
-    if([self checkSftp] == NO) { return; }
+    if([self checkSftp] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     LIBSSH2_SESSION *session = [self.connection session];
     int socketFD = [self.connection socket];
 
-    if ([self openFileHandle] == NO) { return; }
+    if ([self openFileHandle] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     // file handle is now open
     LIBSSH2_SFTP_ATTRIBUTES attributes;
@@ -177,6 +188,7 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToStatFile
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -225,6 +237,7 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToCreateChannel
                         errorDescription:errorDescription
                          underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     } else {
         self.channel = channel;
@@ -268,7 +281,13 @@ static const size_t cBufferSize = 8192;
             printf("request is cancelled after waitsocket\n");
         }
     }
-    if (self.isCancelled) { return; }
+    if (self.isCancelled) {
+        self.error = [self errorWithCode:eSFTPClientErrorCancelledByUser
+                        errorDescription:@"Cancelled by user."
+                         underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     // after data has been read, write it to the channel
     __weak DLSFTPDownloadRequest *weakSelf = self;
     if (bytesRead > 0) {
@@ -327,6 +346,7 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorCancelledByUser
                         errorDescription:@"Cancelled by user."
                          underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -340,8 +360,10 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToCloseFile
                         errorDescription:errorDescription
                          underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
+    [self.connection requestDidComplete:self];
 }
 
 - (void)downloadFailed {
@@ -357,10 +379,10 @@ static const size_t cBufferSize = 8192;
     self.error = [self errorWithCode:eSFTPClientErrorUnableToReadFile
                     errorDescription:errorDescription
                      underlyingError:@(result)];
+    [self.connection requestDidFail:self withError:self.error];
 }
 
-
-- (void)finish {
+- (void)succeed {
     DLSFTPClientFileTransferSuccessBlock successBlock = self.successBlock;
     DLSFTPFile *downloadedFile = self.downloadedFile;
     NSDate *startTime = self.startTime;

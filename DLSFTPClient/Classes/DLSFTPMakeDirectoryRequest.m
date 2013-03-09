@@ -56,8 +56,11 @@
 }
 
 - (void)start {
-    if ([self pathIsValid:self.directoryPath] == NO) { return; }
-    if ([self ready] == NO) { return; }
+    if (   [self pathIsValid:self.directoryPath] == NO
+        || [self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     LIBSSH2_SESSION *session = [self.connection session];
     LIBSSH2_SFTP *sftp = [self.connection sftp];
     int socketFD = [self.connection socket];
@@ -74,7 +77,10 @@
         waitsocket(socketFD, session);
     }
 
-    if ([self ready] == NO) { return; }
+    if ([self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     if (result) {
         // unable to make the directory
@@ -82,6 +88,7 @@
         self.error = [self errorWithCode:eSFTPClientErrorUnableToMakeDirectory
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -93,7 +100,10 @@
         waitsocket(socketFD, session);
     }
 
-    if ([self ready] == NO) { return; }
+    if ([self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     if (result) {
         // unable to stat the directory
@@ -101,6 +111,7 @@
         self.error = [self errorWithCode:eSFTPClientErrorUnableToStatFile
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -108,9 +119,10 @@
     NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
     self.createdDirectory = [[DLSFTPFile alloc] initWithPath:self.directoryPath
                                                   attributes:attributesDictionary];
+    [self.connection requestDidComplete:self];
 }
 
-- (void)finish {
+- (void)succeed {
     DLSFTPClientFileMetadataSuccessBlock successBlock = self.successBlock;
     DLSFTPFile *createdDirectory = self.createdDirectory;
     if (successBlock) {

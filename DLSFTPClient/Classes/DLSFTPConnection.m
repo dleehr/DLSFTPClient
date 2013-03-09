@@ -54,6 +54,7 @@ static const NSUInteger cDefaultSSHPort = 22;
 static const NSTimeInterval cDefaultConnectionTimeout = 15.0;
 static const NSTimeInterval cIdleTimeout = 60.0;
 static const size_t cBufferSize = 8192;
+static NSString * const SFTPClientCompleteRequestException = @"SFTPClientCompleteRequestException";
 
 #import "DLSFTPConnection.h"
 #import "DLSFTPFile.h"
@@ -466,17 +467,38 @@ static const size_t cBufferSize = 8192;
 - (void)startRequest {
     NSLog(@"Starting request: %@", self.currentRequest);
     DLSFTPRequest *request = self.currentRequest;
-    __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_notify(_connectionGroup, _socketQueue, ^{
         [request start];
-        if (request.error) {
+    });
+}
+
+- (void)finishRequest:(DLSFTPRequest *)request failed:(BOOL)failed {
+    if (   self.currentRequest == nil
+        || [self.currentRequest isEqual:request] == NO) {
+        [NSException raise:SFTPClientCompleteRequestException
+                    format:@"Exception completing request %@, it is not the current request %@" , request, self.currentRequest];
+        return;
+    }
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
+        if (failed) {
             [request fail];
         } else {
-            [request finish];
+            [request succeed];
         }
         weakSelf.currentRequest = nil;
         [weakSelf startNextRequest];
     });
+
+}
+
+- (void)requestDidFail:(DLSFTPRequest *)request withError:(NSError *)error {
+    // error is also retained by the request, so is superfluous here
+    [self finishRequest:request failed:YES];
+}
+
+- (void)requestDidComplete:(DLSFTPRequest *)request {
+    [self finishRequest:request failed:NO];
 }
 
 - (void)startIdleTimer {
@@ -873,296 +895,7 @@ static const size_t cBufferSize = 8192;
                             progressBlock:(DLSFTPClientProgressBlock)progressBlock
                              successBlock:(DLSFTPClientFileTransferSuccessBlock)successBlock
                              failureBlock:(DLSFTPClientFailureBlock)failureBlock {
-    DLSFTPRequest *request = [[DLSFTPRequest alloc] init];
-    [self addRequest:request];
-    __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
-        CHECK_REQUEST_CANCELLED
-        CHECK_PATH(remotePath)
-        CHECK_PATH(localPath)
-        if ([weakSelf isConnected] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorNotConnected
-                       errorDescription:@"Socket not connected"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-        }
-        // verify local file is readable prior to upload
-        if ([[NSFileManager defaultManager] isReadableFileAtPath:localPath] == NO) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenLocalFileForReading
-                       errorDescription:@"Local file is not readable"
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        NSError __autoreleasing *attributesError = nil;
-        NSDictionary *localFileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:localPath
-                                                                                             error:&attributesError];
-        if (localFileAttributes == nil) {
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenLocalFileForReading
-                       errorDescription: @"Unable to get attributes of Local file"
-                        underlyingError:@(attributesError.code)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        LIBSSH2_SESSION *session = self.session;
-        LIBSSH2_SFTP *sftp = self.sftp;
-        int socketFD = self.socket;
-        if (sftp == NULL) {
-            // unable to initialize sftp
-            int lastError = libssh2_session_last_errno(session);
-            char *errmsg = NULL;
-            int errmsg_len = 0;
-            libssh2_session_last_error(session, &errmsg, &errmsg_len, 0);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to initialize sftp: libssh2 session error %s: %d"
-                                          , errmsg
-                                          , lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToInitializeSFTP
-                       errorDescription:errorDescription
-                        underlyingError:nil
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // sftp is now valid
-        // get a file handle for the file to upload
-        // write, create, or truncate.  There's also append and excl
-        // permissions 644 (can customize later)
-        // TODO: customize permissions later or base them on local file?
-        // TODO: resume uploads?  first stat the remote file if it exists
-        LIBSSH2_SFTP_HANDLE *handle = NULL;
-                     while (   (handle = libssh2_sftp_open(  sftp
-                                                           , [remotePath UTF8String]
-                                                           , LIBSSH2_FXF_WRITE|LIBSSH2_FXF_CREAT|LIBSSH2_FXF_READ
-                                                           , LIBSSH2_SFTP_S_IRUSR|LIBSSH2_SFTP_S_IWUSR|
-                                                             LIBSSH2_SFTP_S_IRGRP|LIBSSH2_SFTP_S_IROTH)) == NULL
-                            && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)
-                            && request.isCancelled == NO) {
-            waitsocket(socketFD, session);
-        }
-
-        CHECK_REQUEST_CANCELLED
-
-        if (handle == NULL) {
-            // unable to open file handle, get last error
-            unsigned long lastError = libssh2_sftp_last_error(sftp);
-            NSString *errorDescription = [NSString stringWithFormat:@"Unable to open file for writing: SFTP Status Code %ld", lastError];
-            [weakSelf failWithErrorCode:eSFTPClientErrorUnableToOpenFile
-                       errorDescription:errorDescription
-                        underlyingError:@(lastError)
-                           failureBlock:failureBlock];
-            [weakSelf removeRequest:request];
-            return;
-        }
-
-        // jump to the file IO queue
-        dispatch_async(_fileIOQueue, ^{
-            __block dispatch_io_t channel;
-            void(^cleanup_handler)(int) = ^(int error) {
-                if (error) {
-                    printf("Error creating channel: %d", error);
-                }
-                NSLog(@"finished reading file for upload, cleaning up channel");
-                #if NEEDS_DISPATCH_RETAIN_RELEASE
-                dispatch_release(channel);
-                #endif
-            };
-
-            channel = dispatch_io_create_with_path(  DISPATCH_IO_STREAM
-                                                   , [localPath UTF8String]
-                                                   , O_RDONLY
-                                                   , 0
-                                                   , _fileIOQueue
-                                                   , cleanup_handler
-                                                   );
-
-            // dispatch source to invoke progress handler block
-
-            dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-            __block unsigned long long totalBytesSent = 0ull;
-            unsigned long long filesize = [localFileAttributes fileSize];
-            dispatch_source_set_event_handler(progressSource, ^{
-                totalBytesSent += dispatch_source_get_data(progressSource);
-                if (progressBlock) {
-                    progressBlock(totalBytesSent, filesize);
-                }
-            });
-
-            dispatch_source_set_cancel_handler(progressSource, ^{
-#if NEEDS_DISPATCH_RETAIN_RELEASE
-                dispatch_release(progressSource);
-#endif
-            });
-
-            dispatch_resume(progressSource);
-
-            NSDate *startTime = [NSDate date];
-            __block int sftp_result = 0;
-            __block int read_error = 0;
-
-            // progress source gets cancelled in cleanup block
-
-            // this block gets dispatched on the socket queue
-            dispatch_block_t read_finished_block = ^{
-                NSDate *finishTime = [NSDate date];
-                if (request.isCancelled) {
-                    // Cancelled by user
-                    while(libssh2_sftp_close_handle(handle) == LIBSSH2SFTP_EAGAIN) {
-                        waitsocket(socketFD, session);
-                    }
-
-                    // delete remote file on cancel?
-                    [weakSelf failWithErrorCode:eSFTPClientErrorCancelledByUser
-                               errorDescription:@"Cancelled by user."
-                                underlyingError:nil
-                                   failureBlock:failureBlock];
-                    [weakSelf removeRequest:request];
-                    return;
-                }
-
-                if (read_error != 0) {
-                    // error reading file
-                    NSString *errorDescription = [NSString stringWithFormat:@"Read local file failed with code %d", read_error];
-                    [weakSelf failWithErrorCode:eSFTPClientErrorUnableToReadFile
-                               errorDescription:errorDescription
-                                underlyingError:@(read_error)
-                                   failureBlock:failureBlock];
-                    [weakSelf removeRequest:request];
-                    return;
-                }
-
-                if (sftp_result < 0) { // error on last call to upload
-                    // get the error before closing the file
-                    int result = libssh2_sftp_last_error(sftp);
-                    while(   (libssh2_sftp_close_handle(handle) == LIBSSH2SFTP_EAGAIN)
-                          && request.isCancelled == NO) {
-                        waitsocket(socketFD, session);
-                    }
-                    CHECK_REQUEST_CANCELLED
-                    // error writing
-                    NSString *errorDescription = [NSString stringWithFormat:@"Write file failed with code %d.", result];
-                    [weakSelf failWithErrorCode:eSFTPClientErrorUnableToWriteFile
-                               errorDescription:errorDescription
-                                underlyingError:@(result)
-                                   failureBlock:failureBlock];
-                    [weakSelf removeRequest:request];
-                    return;
-                }
-
-                int result;
-                // stat the remote file after uploading
-                LIBSSH2_SFTP_ATTRIBUTES attributes;
-                while (   ((result = libssh2_sftp_fstat(handle, &attributes)) == LIBSSH2SFTP_EAGAIN)
-                       && request.isCancelled == NO){
-                    waitsocket(socketFD, session);
-                }
-                CHECK_REQUEST_CANCELLED
-                if (result) {
-                    // unable to stat the file
-                    NSString *errorDescription = [NSString stringWithFormat:@"Unable to stat file: SFTP Status Code %d", result];
-                    [weakSelf failWithErrorCode:eSFTPClientErrorUnableToStatFile
-                               errorDescription:errorDescription
-                                underlyingError:@(result)
-                                   failureBlock:failureBlock];
-                    [weakSelf removeRequest:request];
-                    return;
-                }
-
-                // now close the remote handle
-                while(   ((result = libssh2_sftp_close_handle(handle)) == LIBSSH2SFTP_EAGAIN)
-                      && request.isCancelled == NO) {
-                    waitsocket(socketFD, session);
-                }
-                CHECK_REQUEST_CANCELLED
-                if (result) {
-                    NSString *errorDescription = [NSString stringWithFormat:@"Close file handle failed with code %d", result];
-                    [weakSelf failWithErrorCode:eSFTPClientErrorUnableToCloseFile
-                               errorDescription:errorDescription
-                                underlyingError:nil
-                                   failureBlock:failureBlock];
-                    [weakSelf removeRequest:request];
-                    return;
-                }
-
-                NSDictionary *attributesDictionary = [NSDictionary dictionaryWithAttributes:attributes];
-                DLSFTPFile *file = [[DLSFTPFile alloc] initWithPath:remotePath
-                                                         attributes:attributesDictionary];
-
-                if (successBlock) {
-                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                        successBlock(file, startTime, finishTime);
-                    });
-                }
-                [weakSelf removeRequest:request];
-            }; // end of read_finished_block
-
-            // dispatch this block on file io queue
-            dispatch_block_t channel_cleanup_block = ^{
-                dispatch_source_cancel(progressSource);
-                dispatch_io_close(channel, DISPATCH_IO_STOP);
-                dispatch_async(_socketQueue, read_finished_block);
-            }; // end channel cleanup block
-
-            dispatch_io_read(  channel
-                             , 0 // for stream, offset is ignored
-                             , SIZE_MAX
-                             , _socketQueue // blocks with data queued on the socket queue
-                             , ^(bool done, dispatch_data_t data, int error) {
-                                 // dispatch_data_apply would be ideal to use here, but the amount of data passed to each block
-                                 // is decided by dispatch_io_read, and we'd need to chunk it up to fit in the buffer anyways
-                                 // still, might be better for cancellation
-                                 // ACTUALLY maybe it can be specified, via the high/low watermark
-
-                                 // and dispatch_io_set_interval should help with stalling to cancel
-
-                                 // data has been read into dispatch_data_t data
-                                 // this will be executed on _socketQueue
-                                 // now loop over the data in sizes smaller than the buffer
-                                 size_t buffered_chunk_size = MIN(cBufferSize, dispatch_data_get_size(data));
-                                 size_t offset = 0;
-                                 const void *buffer;
-                                 while (   (buffered_chunk_size > 0)
-                                        && (offset < dispatch_data_get_size(data))
-                                        && request.isCancelled == NO) {
-                                     dispatch_data_t buffered_chunk_subrange = dispatch_data_create_subrange(data, offset, buffered_chunk_size);
-                                     size_t bytes_read = 0;
-                                     // map the subrange to make sure we have a contiguous buffer
-                                     dispatch_data_t mapped_buffered_chunk_subrange = dispatch_data_create_map(buffered_chunk_subrange, &buffer, &bytes_read);
-
-                                     // send the buffer
-                                     while (   request.isCancelled == NO
-                                            && (sftp_result = libssh2_sftp_write(handle, buffer, bytes_read)) == LIBSSH2SFTP_EAGAIN) {
-                                         // update shouldcontinue into the waitsocket file desctiptor
-                                         waitsocket(socketFD, session);
-                                     }
-                                    #if NEEDS_DISPATCH_RETAIN_RELEASE
-                                    dispatch_release(buffered_chunk_subrange);
-                                    #endif
-                                     mapped_buffered_chunk_subrange = NULL;
-                                     
-                                     offset += bytes_read;
-
-                                     if (sftp_result > 0) {
-                                         dispatch_source_merge_data(progressSource, sftp_result);
-                                     } else {
-                                         // error in SFTP write
-                                         dispatch_async(_fileIOQueue, channel_cleanup_block);
-                                     }
-                                 }
-                                 // end of reading while loop in dispatch_io_handler
-                                 read_error = error;
-                                 if (done) {
-                                     dispatch_async(_fileIOQueue, channel_cleanup_block);
-                                 }
-                             }); // end of dispatch_io_read
-        }); // end of _fileIOQueue
-    }); // end of socketQueue
-    return request;
+    return nil;
 }
 
 

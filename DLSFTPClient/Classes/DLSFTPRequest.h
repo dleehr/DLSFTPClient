@@ -51,8 +51,8 @@ typedef void(^DLSFTPRequestCancelHandler)(void);
 
 // these methods are called by the connection
 - (void)start; // subclasses must override
-- (void)finish; // subclasses must override and invoke their success blocks
-- (void)fail;
+- (void)succeed; // subclasses must override and invoke their success blocks
+- (void)fail; // subclasses need not override this
 
 // Only subclasses should call these
 - (BOOL)ready;

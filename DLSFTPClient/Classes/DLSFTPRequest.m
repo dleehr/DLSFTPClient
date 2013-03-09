@@ -57,7 +57,7 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
                 format:@"Request does not implement start"];
 }
 
-- (void)finish {
+- (void)succeed {
     [NSException raise:DLSFTPRequestNotImplemented
                 format:@"Request does not implement finish"];
 }

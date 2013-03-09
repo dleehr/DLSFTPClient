@@ -86,6 +86,10 @@ typedef void(^DLSFTPClientFileMetadataSuccessBlock)(DLSFTPFile *fileOrDirectory)
 
 @protocol DLSFTPRequestDelegate <NSObject>
 
+// requests should call this when they are complete
+- (void)requestDidFail:(DLSFTPRequest *)request withError:(NSError *)error;
+- (void)requestDidComplete:(DLSFTPRequest *)request;
+
 - (int)socket;
 - (LIBSSH2_SESSION *)session;
 - (LIBSSH2_SFTP *)sftp;

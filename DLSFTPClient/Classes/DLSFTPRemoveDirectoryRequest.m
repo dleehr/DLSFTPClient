@@ -53,8 +53,11 @@
 }
 
 - (void)start {
-    if ([self pathIsValid:self.directoryPath] == NO) { return; }
-    if ([self ready] == NO) { return; }
+    if ([self pathIsValid:self.directoryPath] == NO
+        || [self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     LIBSSH2_SESSION *session = [self.connection session];
     LIBSSH2_SFTP *sftp = [self.connection sftp];
     int socketFD = [self.connection socket];
@@ -66,7 +69,10 @@
         waitsocket(socketFD, session);
     }
 
-    if ([self ready] == NO) { return; }
+    if ([self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     if (result) {
         // unable to remove
@@ -74,11 +80,13 @@
         self.error = [self errorWithCode:eSFTPClientErrorUnableToRename
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
+    [self.connection requestDidComplete:self];
 }
 
-- (void)finish {
+- (void)succeed {
     DLSFTPClientSuccessBlock successBlock = self.successBlock;
     if (successBlock) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

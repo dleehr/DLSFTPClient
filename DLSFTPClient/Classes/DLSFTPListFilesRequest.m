@@ -62,8 +62,11 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)start {
-    if ([self pathIsValid:self.directoryPath] == NO) { return; }
-    if ([self ready] == NO) { return; }
+    if (   [self pathIsValid:self.directoryPath] == NO
+        || [self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     LIBSSH2_SESSION *session = [self.connection session];
     LIBSSH2_SFTP *sftp = [self.connection sftp];
@@ -76,7 +79,10 @@ static const size_t cBufferSize = 8192;
         waitsocket(socketFD, session);
     }
 
-    if ([self ready] == NO) { return; }
+    if ([self ready] == NO) {
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
 
     if (handle == NULL) {
         // unable to open directory
@@ -87,6 +93,7 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToOpenDirectory
                         errorDescription:errorDescription
                          underlyingError:@(lastError)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -100,7 +107,10 @@ static const size_t cBufferSize = 8192;
                && self.isCancelled == NO){
             waitsocket(socketFD, session);
         }
-        if ([self ready] == NO) { return; }
+        if ([self ready] == NO) {
+            [self.connection requestDidFail:self withError:self.error];
+            return;
+        }
         if (result > 0) {
             NSString *filename = [NSString stringWithUTF8String:buffer];
             // skip . and ..
@@ -126,6 +136,7 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToReadDirectory
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
@@ -139,14 +150,16 @@ static const size_t cBufferSize = 8192;
         self.error = [self errorWithCode:eSFTPClientErrorUnableToCloseDirectory
                         errorDescription:errorDescription
                          underlyingError:@(result)];
+        [self.connection requestDidFail:self withError:self.error];
         return;
     }
 
     [fileList sortUsingSelector:@selector(compare:)];
     self.fileList = fileList;
+    [self.connection requestDidComplete:self];
 }
 
-- (void)finish {
+- (void)succeed {
     DLSFTPClientArraySuccessBlock successBlock = self.successBlock;
     NSArray *fileList = self.fileList;
     if (successBlock) {
