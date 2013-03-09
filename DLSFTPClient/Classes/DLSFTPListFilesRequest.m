@@ -62,7 +62,6 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)start {
-    // must happen on a dispatch queue
     if ([self pathIsValid:self.directoryPath] == NO) { return; }
     if ([self ready] == NO) { return; }
 
