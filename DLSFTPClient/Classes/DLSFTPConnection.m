@@ -487,7 +487,8 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (void)cancelAllRequests {
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_barrier_async(_requestQueue, ^{
+    [self.currentRequest cancel];
+    dispatch_barrier_sync(_requestQueue, ^{
         for (DLSFTPRequest *request in weakSelf.requests) {
             [request cancel];
         }
