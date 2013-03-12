@@ -37,7 +37,6 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
 @interface DLSFTPRequest ()
 
 @property (nonatomic, readwrite, getter = isCancelled) BOOL cancelled;
-//@property (nonatomic, readwrite, copy) DLSFTPRequestCancelHandler cancelHandler;
 
 @end
 
