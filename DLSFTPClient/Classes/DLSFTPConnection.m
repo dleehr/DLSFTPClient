@@ -38,12 +38,6 @@
 #import "DLSFTPConnection.h"
 #import "DLSFTPRequest.h"
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
-#define NEEDS_DISPATCH_RETAIN_RELEASE 0
-#else                                         // iOS 5.X or earlier
-#define NEEDS_DISPATCH_RETAIN_RELEASE 1
-#endif
-
 // keyboard-interactive response
 static void response(const char *name,   int name_len, const char *instruction,   int instruction_len,   int num_prompts,   const LIBSSH2_USERAUTH_KBDINT_PROMPT *prompts,   LIBSSH2_USERAUTH_KBDINT_RESPONSE *responses,   void **abstract);
 
