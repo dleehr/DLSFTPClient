@@ -251,18 +251,21 @@ static const size_t cBufferSize = 8192;
             progressBlock(bytesReceived, filesize);
         }
     });
+    self.progressSource = progressSource;
+    __weak DLSFTPDownloadRequest *weakSelf = self;
     dispatch_source_set_cancel_handler(progressSource, ^{
     #if NEEDS_DISPATCH_RETAIN_RELEASE
-        dispatch_release(progressSource);
+        if (weakSelf.progressSource) {
+            dispatch_release(weakSelf.progressSource);
+            weakSelf.progressSource = NULL;
+        }
     #endif
     });
-    self.progressSource = progressSource;
     dispatch_resume(self.progressSource);
      // end of progressSource setup
 
     self.startTime = [NSDate date];
     // start the first download block
-    __weak DLSFTPDownloadRequest *weakSelf = self;
     dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadChunk]; });
 }
 
@@ -323,6 +326,7 @@ static const size_t cBufferSize = 8192;
     dispatch_semaphore_wait(self.semaphore, DISPATCH_TIME_FOREVER);
 #if NEEDS_DISPATCH_RETAIN_RELEASE
     dispatch_release(self.semaphore);
+    self.semaphore = NULL;
 #endif
     int socketFD = [self.connection socket];
     LIBSSH2_SESSION *session = [self.connection session];
@@ -369,6 +373,18 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)downloadFailed {
+    // nothing read, done
+    self.finishTime = [NSDate date];
+    dispatch_source_cancel(self.progressSource);
+    dispatch_io_close(self.channel, 0);
+
+    /* End dispatch_io */
+
+    dispatch_semaphore_wait(self.semaphore, DISPATCH_TIME_FOREVER);
+#if NEEDS_DISPATCH_RETAIN_RELEASE
+    dispatch_release(self.semaphore);
+    self.semaphore = NULL;
+#endif
     // get the error before closing the file
     int result = libssh2_sftp_last_error([self.connection sftp]);
     int socketFD = [self.connection socket];
