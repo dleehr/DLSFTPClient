@@ -181,8 +181,10 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     _socketQueue = NULL;
     dispatch_release(_connectionGroup);
     _connectionGroup = NULL;
-    dispatch_release(_idleTimer);
-    _idleTimer = NULL;
+    if (_idleTimer) {
+        dispatch_release(_idleTimer);
+        _idleTimer = NULL;
+    }
     #endif
     [self disconnectSocket];
 }
