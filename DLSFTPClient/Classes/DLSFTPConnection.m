@@ -573,6 +573,8 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         dispatch_group_async(_connectionGroup, _socketQueue, ^{
             unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
             weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
+            int set = 1;
+            setsockopt(weakSelf.socket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
             if (weakSelf.socket == -1) {
                 [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
                                      errorDescription:@"Unable to create socket"];
