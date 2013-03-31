@@ -171,65 +171,44 @@ static const size_t cBufferSize = 8192;
         weakSelf.startTime = [NSDate date];
         weakSelf.read_error = 0;
 
-        // dispatch this block on file io queue
-
-        dispatch_block_t channel_cleanup_block = ^{
-            dispatch_source_cancel(progressSource);
-            dispatch_io_close(channel, DISPATCH_IO_STOP);
-            dispatch_async(socketQueue, ^{ [weakSelf uploadFinished]; });
-        }; // end channel cleanup block
+        // set the high watermark to the buffer size
+        dispatch_io_set_high_water(channel, cBufferSize);
 
         dispatch_io_read(  channel
                          , 0 // for stream, offset is ignored
                          , SIZE_MAX
                          , socketQueue // blocks with data queued on the socket queue
                          , ^(bool done, dispatch_data_t data, int error) {
-                             // dispatch_data_apply would be ideal to use here, but the amount of data passed to each block
-                             // is decided by dispatch_io_read, and we'd need to chunk it up to fit in the buffer anyways
-                             // still, might be better for cancellation
-                             // ACTUALLY maybe it can be specified, via the high/low watermark
-
-                             // and dispatch_io_set_interval should help with stalling to cancel
-
-                             // data has been read into dispatch_data_t data
-                             // this will be executed on _socketQueue
-                             // now loop over the data in sizes smaller than the buffer
-                             size_t buffered_chunk_size = MIN(cBufferSize, dispatch_data_get_size(data));
-                             size_t offset = 0;
-                             const void *buffer;
-                             while (   (buffered_chunk_size > 0)
-                                    && (offset < dispatch_data_get_size(data))
-                                    && weakSelf.isCancelled == NO) {
-                                 dispatch_data_t buffered_chunk_subrange = dispatch_data_create_subrange(data, offset, buffered_chunk_size);
-                                 size_t bytes_read = 0;
-                                 // map the subrange to make sure we have a contiguous buffer
-                                 dispatch_data_t mapped_buffered_chunk_subrange = dispatch_data_create_map(buffered_chunk_subrange, &buffer, &bytes_read);
-
+                             // data objects will be less than or equal to the buffer size
+                             if (done || weakSelf.isCancelled) {
+                                 dispatch_source_cancel(progressSource);
+                                 dispatch_io_close(channel, DISPATCH_IO_STOP);
+                                 dispatch_async(socketQueue, ^{ [weakSelf uploadFinished]; });
+                                 return;
+                             }
+                             dispatch_data_applier_t applier = ^bool(dispatch_data_t region, size_t offset, const void *buffer, size_t size) {
                                  // send the buffer
                                  int sftp_result = 0;
                                  while (   weakSelf.isCancelled == NO
-                                        && (sftp_result = libssh2_sftp_write(weakSelf.handle, buffer, bytes_read)) == LIBSSH2SFTP_EAGAIN) {
+                                        && (sftp_result = libssh2_sftp_write(weakSelf.handle, buffer, size)) == LIBSSH2SFTP_EAGAIN) {
                                      // update shouldcontinue into the waitsocket file desctiptor
                                      waitsocket(socketFD, session);
                                  }
                                  weakSelf.sftp_result = sftp_result;
-#if NEEDS_DISPATCH_RETAIN_RELEASE
-                                 dispatch_release(buffered_chunk_subrange);
-#endif
-                                 mapped_buffered_chunk_subrange = NULL;
-                                 offset += bytes_read;
                                  if (sftp_result > 0) {
                                      dispatch_source_merge_data(progressSource, sftp_result);
+                                     return true;
+                                 } else if (sftp_result == 0) {
+                                     // nothing written
+                                     return true;
                                  } else {
                                      // error in SFTP write
-                                     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), channel_cleanup_block);
+                                     return false;
                                  }
-                             }
+                             };
+                             dispatch_data_apply(data, applier);
                              // end of reading while loop in dispatch_io_handler
                              weakSelf.read_error = error;
-                             if (done) {
-                                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), channel_cleanup_block);
-                             }
                          }); // end of dispatch_io_read
     });
 }
