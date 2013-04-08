@@ -53,7 +53,7 @@
         self = nil;
         return self;
     }
-    self = [super initWithNibName:nil bundle:nil];
+    self = [super initWithStyle:UITableViewStyleGrouped];
     if (self) {
         self.file = file;
         self.connection = connection;
@@ -64,7 +64,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor groupTableViewBackgroundColor];
 
     // file name and details
     CGFloat buttonHeight = 44.0f;
@@ -72,12 +71,12 @@
     CGFloat progressHeight = 9.0f;
 
     // lower rect for buttons
-    UIView *lowerView = [[UIView alloc] initWithFrame:CGRectMake(  CGRectGetMinX(self.view.bounds) + padding
-                                                                 , CGRectGetMaxY(self.view.bounds)
+    UIView *lowerView = [[UIView alloc] initWithFrame:CGRectMake(  0.0f
+                                                                 , 0.0f
                                                                  , CGRectGetWidth(self.view.bounds) - 2.0f * padding
                                                                  , buttonHeight + progressHeight + 2.0f * padding)];
     lowerView.autoresizingMask = UIViewAutoresizingFlexibleTopMargin;
-    lowerView.backgroundColor = [UIColor clearColor];
+    lowerView.backgroundColor = self.view.backgroundColor;
     lowerView.autoresizesSubviews = NO;
 
     // progress label
@@ -85,18 +84,20 @@
                                                                        , CGRectGetMinY(lowerView.bounds)
                                                                        , CGRectGetWidth(lowerView.bounds) - padding * 2.0f
                                                                        , buttonHeight)];
-    progressLabel.backgroundColor = [UIColor clearColor];
+    progressLabel.backgroundColor = self.view.backgroundColor;
     progressLabel.textAlignment = UITextAlignmentRight;
+    progressLabel.textColor = [UIColor darkTextColor];
+    progressLabel.text = @"";
     [lowerView addSubview:progressLabel];
     self.progressLabel = _progressLabel;
 
     CGFloat buttonWidth = roundf((CGRectGetWidth(lowerView.bounds) - padding) / 2.0f);
     UIButton *startButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    startButton.frame = CGRectMake(  CGRectGetMinX(lowerView.bounds)
+    startButton.frame = CGRectMake(  CGRectGetMinX(lowerView.bounds) + padding
                                    , CGRectGetMaxY(progressLabel.frame) + padding
                                    , buttonWidth
                                    , buttonHeight);
-    startButton.backgroundColor = [UIColor clearColor];
+    startButton.backgroundColor = self.view.backgroundColor;
     [startButton setTitle:@"Download" forState:UIControlStateNormal];
     [startButton addTarget:self
                     action:@selector(startTapped:)
@@ -108,7 +109,7 @@
                                     , CGRectGetMaxY(progressLabel.frame) + padding
                                     , buttonWidth
                                     , buttonHeight);
-    cancelButton.backgroundColor = [UIColor clearColor];
+    cancelButton.backgroundColor = self.view.backgroundColor;
     [cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
 
     [cancelButton addTarget:self
@@ -121,11 +122,11 @@
 
     // progress view
     UIProgressView *progressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
-    progressView.frame = CGRectMake(  CGRectGetMinX(lowerView.bounds)
+    progressView.frame = CGRectMake(  CGRectGetMinX(lowerView.bounds) + padding
                                      , CGRectGetMaxY(cancelButton.frame) + padding
                                      , CGRectGetWidth(lowerView.bounds)
                                      , progressHeight);
-    progressView.backgroundColor = [UIColor greenColor];
+    progressView.backgroundColor = self.view.backgroundColor;
     
     [lowerView addSubview:progressView];
     self.progressView = progressView;
@@ -134,19 +135,8 @@
     lowerViewFrame.origin.y = (CGRectGetMaxY(self.view.bounds) - CGRectGetHeight(lowerViewFrame));
     lowerView.frame = lowerViewFrame;
 
-    [self.view addSubview:lowerView];
+    self.tableView.tableFooterView = lowerView;
 
-    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectMake(  CGRectGetMinX(self.view.bounds)
-                                                                           , CGRectGetMinY(self.view.bounds)
-                                                                           , CGRectGetWidth(self.view.bounds)
-                                                                           , CGRectGetHeight(self.view.bounds) - CGRectGetHeight(lowerViewFrame))
-                                                          style:UITableViewStyleGrouped];
-    tableView.allowsSelection = NO;
-    tableView.autoresizingMask = UIViewAutoresizingFlexibleHeight;
-    tableView.delegate = self;
-    tableView.dataSource = self;
-
-    [self.view addSubview:tableView];
 }
 
 #pragma mark UITableViewDataSource

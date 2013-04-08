@@ -34,7 +34,7 @@
 @class DLSFTPFile;
 @class DLSFTPConnection;
 
-@interface FileDownloadViewController : UIViewController
+@interface FileDownloadViewController : UITableViewController
 
 - (id)initWithFile:(DLSFTPFile *)file
         connection:(DLSFTPConnection *)connection;

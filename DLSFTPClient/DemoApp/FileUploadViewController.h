@@ -32,7 +32,7 @@
 #import <UIKit/UIKit.h>
 
 @class DLSFTPConnection;
-@interface FileUploadViewController : UIViewController
+@interface FileUploadViewController : UITableViewController
 
 - (id)initWithConnection:(DLSFTPConnection *)connection
          remoteDirectory:(NSString *)remoteBasePath
