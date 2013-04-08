@@ -89,7 +89,7 @@
     progressLabel.backgroundColor = self.view.backgroundColor;
     progressLabel.textAlignment = UITextAlignmentRight;
     [lowerView addSubview:progressLabel];
-    _progressLabel = progressLabel;
+    self.progressLabel = progressLabel;
 
     CGFloat buttonWidth = roundf((CGRectGetWidth(lowerView.bounds) - padding) / 2.0f);
     UIButton *startButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -195,7 +195,6 @@
             DLFileSizeFormatter *formatter = [[DLFileSizeFormatter alloc] init];
             unsigned long long rate = (file.attributes.fileSize / duration);
             NSString *rateString = [formatter stringFromSize:rate];
-            weakSelf.progressLabel.text = nil;
 
             NSString *alertMessage = [NSString stringWithFormat:@"Uploaded %@ in %.1fs\n %@/sec", file.filename, duration, rateString];
             UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Upload completed"
