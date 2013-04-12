@@ -270,9 +270,8 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)downloadChunk {
-    // better to subclass DLSFTPRequest, then requests can have properties
     int bytesRead = 0;
-    static char buffer[cBufferSize];
+    char buffer[cBufferSize];
     while (   self.isCancelled == NO
            && (bytesRead = libssh2_sftp_read(self.handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
         waitsocket([self.connection socket], [self.connection session]);
