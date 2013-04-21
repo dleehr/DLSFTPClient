@@ -190,7 +190,7 @@ static const size_t cBufferSize = 8192;
                                  // send the buffer
                                  int sftp_result = 0;
                                  while (   weakSelf.isCancelled == NO
-                                        && (sftp_result = libssh2_sftp_write(weakSelf.handle, buffer, size)) == LIBSSH2SFTP_EAGAIN) {
+                                        && (sftp_result = libssh2_sftp_write(weakSelf.handle, buffer + offset, size)) == LIBSSH2SFTP_EAGAIN) {
                                      // update shouldcontinue into the waitsocket file desctiptor
                                      waitsocket(socketFD, session);
                                  }
