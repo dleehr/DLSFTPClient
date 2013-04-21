@@ -182,7 +182,7 @@ static const size_t cBufferSize = 8192;
                              // data objects will be less than or equal to the buffer size
                              if (done || weakSelf.isCancelled) {
                                  dispatch_source_cancel(progressSource);
-                                 dispatch_io_close(channel, DISPATCH_IO_STOP);
+                                 dispatch_io_close(channel, weakSelf.isCancelled ? DISPATCH_IO_STOP : 0);
                                  dispatch_async(socketQueue, ^{ [weakSelf uploadFinished]; });
                                  return;
                              }
