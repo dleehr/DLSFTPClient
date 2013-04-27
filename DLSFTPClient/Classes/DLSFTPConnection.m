@@ -182,7 +182,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         _idleTimer = NULL;
     }
     #endif
-    [self disconnectSocket];
+    [self _disconnect];
 }
 
 - (dispatch_queue_t)socketQueue {
@@ -260,7 +260,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     self.connectionSuccessBlock = nil;
 }
 
-- (void)disconnectSocket {
+- (void)_disconnect {
     if (_idleTimer) { // avoid cancelling after dealloc
         [self cancelIdleTimer];
     }
@@ -282,7 +282,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
         if (session == NULL) { // unable to access the session
             // close the socket
-            [weakSelf disconnectSocket];
+            [weakSelf _disconnect];
             // unable to initialize session
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToInitializeSession
                    errorDescription:@"Unable to initialize libssh2 session"];
@@ -299,7 +299,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         if (result) {
             // handshake failed
             // free the session and close the socket
-            [weakSelf disconnectSocket];
+            [weakSelf _disconnect];
 
             NSString *errorDescription = [NSString stringWithFormat:@"Handshake failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
@@ -349,7 +349,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         if (libssh2_userauth_authenticated(session) == 0) {
             // authentication failed
             // disconnect to disconnect/free the session and close the socket
-            [weakSelf disconnectSocket];
+            [weakSelf _disconnect];
             NSString *errorDescription = [NSString stringWithFormat:@"Authentication failed with code %d", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
@@ -546,7 +546,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         dispatch_source_set_event_handler(timeoutTimer, ^{
             // timeout fired, close the socket
             dispatch_sync([weakSelf socketQueue], ^{
-                [weakSelf disconnectSocket]; // closes on socketQueue
+                [weakSelf _disconnect]; // closes on socketQueue
             });
             // and fail
             [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
@@ -608,7 +608,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 - (void)disconnect {
     [self cancelAllRequests];
     dispatch_sync(_socketQueue, ^{
-        [self disconnectSocket];
+        [self _disconnect];
     });
     if (self.connectionFailureBlock) { // not yet connected
         [self failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
