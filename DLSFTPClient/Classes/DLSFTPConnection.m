@@ -274,6 +274,33 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
 }
 
+// called by the disconnect handler
+- (void)disconnectedWithReason:(NSInteger)reason message:(NSString *)message {
+    NSLog(@"Disconnected: %d, %@", reason, message);
+    if (reason == SSH_DISCONNECT_BY_APPLICATION) {
+        // Disconnected by the application, not a failure per se
+    } else {
+        [self shutdownSftp];
+        // don't call disconnectSession because it is already disconnected
+        while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
+            waitsocket(self.socket, _session);
+        }
+        [self cancelAllRequests];
+        if (self.connectionFailureBlock) {
+            // we were in the middle of a connection attempt, invoke the failure block
+            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with code %d", reason];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorDisconnected
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(reason) }];
+            DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                failureBlock(error);
+            });
+        }
+        [self clearConnectionBlocks];
+    }
+}
+
 - (void)startSFTPSession {
     __weak DLSFTPConnection *weakSelf = self;
     dispatch_group_async(_connectionGroup,_socketQueue, ^{
@@ -613,32 +640,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     if (self.connectionFailureBlock) { // not yet connected
         [self failConnectionWithErrorCode:eSFTPClientErrorCancelledByUser
                          errorDescription:@"Cancelled by user"];
-    }
-}
-
-- (void)disconnectedWithReason:(NSInteger)reason message:(NSString *)message {
-    NSLog(@"Disconnected: %d, %@", reason, message);
-    if (reason == SSH_DISCONNECT_BY_APPLICATION) {
-        // Disconnected by the application, not a failure per se
-    } else {
-        [self shutdownSftp];
-        // don't call disconnectSession because it is already disconnected
-        while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
-            waitsocket(self.socket, _session);
-        }
-        [self cancelAllRequests];
-        if (self.connectionFailureBlock) {
-            // we were in the middle of a connection attempt, invoke the failure block
-            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with code %d", reason];
-            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                                 code:eSFTPClientErrorDisconnected
-                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(reason) }];
-            DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                failureBlock(error);
-            });
-        }
-        [self clearConnectionBlocks];
     }
 }
 
