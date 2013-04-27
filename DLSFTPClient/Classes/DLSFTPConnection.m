@@ -287,15 +287,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         }
         [self cancelAllRequests];
         if (self.connectionFailureBlock) {
-            // we were in the middle of a connection attempt, invoke the failure block
-            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with code %d", reason];
-            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
-                                                 code:eSFTPClientErrorDisconnected
-                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(reason) }];
-            DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                failureBlock(error);
-            });
+            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with reason %d: %@", reason, message];
+            [self failConnectionWithErrorCode:eSFTPClientErrorDisconnected
+                             errorDescription:errorDescription];
         }
         [self clearConnectionBlocks];
     }
