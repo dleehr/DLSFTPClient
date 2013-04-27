@@ -277,7 +277,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 // called by the disconnect handler when a SSH_MSG_DISCONNECT is received
 // not called when SSH_DISCONNECT_BY_APPLICATION
 - (void)disconnectedWithReason:(NSInteger)reason message:(NSString *)message {
-    NSLog(@"Disconnected: %d, %@", reason, message);
     [self shutdownSftp];
     // don't call disconnectSession because it is already disconnected
     while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
