@@ -274,25 +274,22 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
 }
 
-// called by the disconnect handler
+// called by the disconnect handler when a SSH_MSG_DISCONNECT is received
+// not called when SSH_DISCONNECT_BY_APPLICATION
 - (void)disconnectedWithReason:(NSInteger)reason message:(NSString *)message {
     NSLog(@"Disconnected: %d, %@", reason, message);
-    if (reason == SSH_DISCONNECT_BY_APPLICATION) {
-        // Disconnected by the application, not a failure per se
-    } else {
-        [self shutdownSftp];
-        // don't call disconnectSession because it is already disconnected
-        while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
-            waitsocket(self.socket, _session);
-        }
-        [self cancelAllRequests];
-        if (self.connectionFailureBlock) {
-            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with reason %d: %@", reason, message];
-            [self failConnectionWithErrorCode:eSFTPClientErrorDisconnected
-                             errorDescription:errorDescription];
-        }
-        [self clearConnectionBlocks];
+    [self shutdownSftp];
+    // don't call disconnectSession because it is already disconnected
+    while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
+        waitsocket(self.socket, _session);
     }
+    [self cancelAllRequests];
+    if (self.connectionFailureBlock) {
+        NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with reason %d: %@", reason, message];
+        [self failConnectionWithErrorCode:eSFTPClientErrorDisconnected
+                         errorDescription:errorDescription];
+    }
+    [self clearConnectionBlocks];
 }
 
 - (void)startSFTPSession {
