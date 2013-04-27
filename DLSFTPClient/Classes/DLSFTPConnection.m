@@ -38,9 +38,11 @@
 #import "DLSFTPConnection.h"
 #import "DLSFTPRequest.h"
 
-// keyboard-interactive response
-static void response(const char *name,   int name_len, const char *instruction,   int instruction_len,   int num_prompts,   const LIBSSH2_USERAUTH_KBDINT_PROMPT *prompts,   LIBSSH2_USERAUTH_KBDINT_RESPONSE *responses,   void **abstract);
+// disconnection callback
+LIBSSH2_DISCONNECT_FUNC(disconnected);
 
+// keyboard-interactive response
+LIBSSH2_USERAUTH_KBDINT_RESPONSE_FUNC(response);
 
 NSString * const SFTPClientErrorDomain = @"SFTPClientErrorDomain";
 NSString * const SFTPClientUnderlyingErrorKey = @"SFTPClientUnderlyingError";
@@ -204,20 +206,17 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     return _idleTimer;
 }
 
-- (void)setSession:(LIBSSH2_SESSION *)session {
-    // destroy if exists
+- (void)disconnectSession {
     if (_session) {
-        // check if _sftp exists
-        self.sftp = NULL;
+        // this implies SSH_DISCONNECT_BY_APPLICATION
         while (libssh2_session_disconnect(_session, "") == LIBSSH2_ERROR_EAGAIN) {
             waitsocket(self.socket, _session);
         }
         while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
             waitsocket(self.socket, _session);
         }
-        _session = NULL;
+        self.session = NULL;
     }
-    _session = session;
 }
 
 - (LIBSSH2_SESSION *)session {
@@ -226,18 +225,19 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         // set non-blocking
         if (_session) {
             libssh2_session_set_blocking(_session, 0);
+            libssh2_session_callback_set(_session, LIBSSH2_CALLBACK_DISCONNECT, disconnected);
         }
     }
     return _session;
 }
 
-- (void)setSftp:(LIBSSH2_SFTP *)sftp {
+- (void)shutdownSftp {
     if (_sftp) {
         while (libssh2_sftp_shutdown(_sftp) == LIBSSH2SFTP_EAGAIN) {
             waitsocket(self.socket, _session);
         }
+        self.sftp = NULL;
     }
-    _sftp = sftp;
 }
 
 // If there's an error initializing sftp, such as a non-authenticated connection, this will return NULL and we must check the session error
@@ -264,8 +264,8 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     if (_idleTimer) { // avoid cancelling after dealloc
         [self cancelIdleTimer];
     }
-    self.sftp = NULL;
-    self.session = NULL;
+    [self shutdownSftp];
+    [self disconnectSession];
     if (self.socket >= 0) {
         if(close(self.socket) == -1) {
             NSLog(@"Error closing socket: %d", errno);
@@ -616,6 +616,32 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
 }
 
+- (void)disconnectedWithReason:(NSInteger)reason message:(NSString *)message {
+    NSLog(@"Disconnected: %d, %@", reason, message);
+    if (reason == SSH_DISCONNECT_BY_APPLICATION) {
+        // Disconnected by the application, not a failure per se
+    } else {
+        [self shutdownSftp];
+        // don't call disconnectSession because it is already disconnected
+        while (libssh2_session_free(_session) == LIBSSH2_ERROR_EAGAIN) {
+            waitsocket(self.socket, _session);
+        }
+        [self cancelAllRequests];
+        if (self.connectionFailureBlock) {
+            // we were in the middle of a connection attempt, invoke the failure block
+            NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with code %d", reason];
+            NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
+                                                 code:eSFTPClientErrorDisconnected
+                                             userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(reason) }];
+            DLSFTPClientFailureBlock failureBlock = self.connectionFailureBlock;
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                failureBlock(error);
+            });
+        }
+        [self clearConnectionBlocks];
+    }
+}
+
 @end
 
 // waitsocket from http://www.libssh2.org/examples/
@@ -649,18 +675,9 @@ int waitsocket(int socket_fd, LIBSSH2_SESSION *session) {
     return rc;
 }
 
-
 // callback function for keyboard-interactive authentication
-static void response(const char *name,
-                     int name_len,
-                     const char *instruction,
-                     int instruction_len,
-                     int num_prompts,
-                     const LIBSSH2_USERAUTH_KBDINT_PROMPT *prompts,
-                     LIBSSH2_USERAUTH_KBDINT_RESPONSE *responses,
-                     void **abstract) {
+LIBSSH2_USERAUTH_KBDINT_RESPONSE_FUNC(response) {
     DLSFTPConnection *connection = (__bridge DLSFTPConnection *)*abstract;
-
     if (num_prompts > 0) {
         // check if prompt is password
         // assume responses matches prompts
@@ -672,3 +689,10 @@ static void response(const char *name,
     }
 }
 
+// callback function for disconnect
+LIBSSH2_DISCONNECT_FUNC(disconnected) {
+    DLSFTPConnection *connection = (__bridge DLSFTPConnection *)(*abstract);
+    dispatch_async([connection socketQueue], ^{
+        [connection disconnectedWithReason:reason message:[NSString stringWithUTF8String:message]];
+    });
+}
