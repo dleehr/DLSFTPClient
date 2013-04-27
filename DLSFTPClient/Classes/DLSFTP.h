@@ -58,6 +58,7 @@ typedef enum {
     eSFTPClientErrorSocketError,
     eSFTPClientErrorUnableToConnect,
     eSFTPClientErrorUnableToInitializeSession,
+    eSFTPClientErrorDisconnected,
     eSFTPClientErrorHandshakeFailed,
     eSFTPClientErrorAuthenticationFailed,
     eSFTPClientErrorNotConnected,
