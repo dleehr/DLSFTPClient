@@ -37,6 +37,9 @@
 		379B78E715E86DA5007B8DAB /* LocalFilesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 379B78E615E86DA5007B8DAB /* LocalFilesViewController.m */; };
 		37A5B1BA15F5119A00B1577E /* FileOperationsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */; };
 		37CDBC8E169FBBB900232688 /* testfile.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 37CDBC8D169FBBB900232688 /* testfile.jpg */; };
+		37D09450172DB84700375E11 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D0944F172DB84700375E11 /* CFNetwork.framework */; };
+		37D09452172DB87B00375E11 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D0944F172DB84700375E11 /* CFNetwork.framework */; };
+		37D09453172DB87C00375E11 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D0944F172DB84700375E11 /* CFNetwork.framework */; };
 		37D6580E160EA1870041099A /* DLDocumentsDirectoryPath.m in Sources */ = {isa = PBXBuildFile; fileRef = 37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */; };
 		37D65811160EA1F50041099A /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 37D65810160EA1F50041099A /* Default-568h@2x.png */; };
 		37DB18AB1699EB300053D51A /* SenTestingKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37DB18AA1699EB300053D51A /* SenTestingKit.framework */; };
@@ -136,6 +139,7 @@
 		37A5B1B815F5119A00B1577E /* FileOperationsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileOperationsViewController.h; sourceTree = "<group>"; };
 		37A5B1B915F5119A00B1577E /* FileOperationsViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileOperationsViewController.m; sourceTree = "<group>"; };
 		37CDBC8D169FBBB900232688 /* testfile.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = testfile.jpg; sourceTree = "<group>"; };
+		37D0944F172DB84700375E11 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		37D6580C160EA1860041099A /* DLDocumentsDirectoryPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DLDocumentsDirectoryPath.h; sourceTree = "<group>"; };
 		37D6580D160EA1870041099A /* DLDocumentsDirectoryPath.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DLDocumentsDirectoryPath.m; sourceTree = "<group>"; };
 		37D65810160EA1F50041099A /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
@@ -162,6 +166,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				37D09450172DB84700375E11 /* CFNetwork.framework in Frameworks */,
 				372F7BE5162CDDE60038F852 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -178,6 +183,7 @@
 				3734F05115D69B190078A7E5 /* libcrypto.a in Frameworks */,
 				3734F05215D69B190078A7E5 /* libssh2.a in Frameworks */,
 				3734F05315D69B190078A7E5 /* libssl.a in Frameworks */,
+				37D09452172DB87B00375E11 /* CFNetwork.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +199,7 @@
 				37DB18C01699F02B0053D51A /* libssh2.a in Frameworks */,
 				37DB18C11699F02F0053D51A /* libcrypto.a in Frameworks */,
 				37DB18C21699F0320053D51A /* libz.dylib in Frameworks */,
+				37D09453172DB87C00375E11 /* CFNetwork.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,6 +236,7 @@
 				3734F04E15D69B190078A7E5 /* libcrypto.a */,
 				3734F04F15D69B190078A7E5 /* libssh2.a */,
 				3734F05015D69B190078A7E5 /* libssl.a */,
+				37D0944F172DB84700375E11 /* CFNetwork.framework */,
 				3734F02E15D699FE0078A7E5 /* UIKit.framework */,
 				3734F03015D699FE0078A7E5 /* Foundation.framework */,
 				3734F03215D699FE0078A7E5 /* CoreGraphics.framework */,

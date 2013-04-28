@@ -37,6 +37,7 @@
 #include "libssh2_sftp.h"
 #import "DLSFTPConnection.h"
 #import "DLSFTPRequest.h"
+#import <CFNetwork/CFNetwork.h>
 
 // disconnection callback
 LIBSSH2_DISCONNECT_FUNC(disconnected);
@@ -558,8 +559,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         __weak DLSFTPConnection *weakSelf = self;
         // set up a timeout handler
         __block dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
-        dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
-        dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
         dispatch_source_set_event_handler(timeoutTimer, ^{
             // timeout fired, close the socket
             dispatch_sync([weakSelf socketQueue], ^{
@@ -581,33 +580,87 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             timeoutTimer = NULL;
         });
 
-        // start the timer
+        // Resume the timer but don't set its fire time until we're about to try connecting
+        dispatch_source_set_timer(timeoutTimer, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
         if (timeoutTimer) {
             dispatch_resume(timeoutTimer);
         }
 
         // initialize and connect the socket on the socket queue
         dispatch_group_async(_connectionGroup, _socketQueue, ^{
-            unsigned long hostaddr = inet_addr([weakSelf.hostname UTF8String]);
-            weakSelf.socket = socket(AF_INET, SOCK_STREAM, 0);
-            int set = 1;
-            setsockopt(weakSelf.socket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
-            if (weakSelf.socket == -1) {
-                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
-                                     errorDescription:@"Unable to create socket"];
-                weakSelf.connectionSuccessBlock = nil;
+            // Resolve the hostname
+
+            CFHostRef hostRef = CFHostCreateWithName(NULL, (__bridge CFStringRef)(weakSelf.hostname));
+            Boolean resolved = CFHostStartInfoResolution(hostRef, kCFHostAddresses, NULL);
+            if (!resolved) {
+                CFRelease(hostRef);
+                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToResolveHostname
+                                     errorDescription:@"Unable to resolve hostname"];
                 return;
             }
-            struct sockaddr_in soin;
-            soin.sin_family = AF_INET;
-            soin.sin_port = htons(weakSelf.port);
-            soin.sin_addr.s_addr = hostaddr;
+            // Get resolved address
+            Boolean hasBeenResolved = false;
+            NSArray *addresses = (__bridge NSArray *)CFHostGetAddressing(hostRef, &hasBeenResolved);
 
-            int result = connect(weakSelf.socket, (struct sockaddr*)(&soin),sizeof(struct sockaddr_in));
+            if (addresses == NULL) {
+                CFRelease(hostRef);
+
+                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToResolveHostname
+                                     errorDescription:@"Unable to obtain an address for hostname"];
+                return;
+            }
+            CFRelease(hostRef);
+            // Get a connection
+            int result = -1;
+            for (NSData *addressData in addresses) {
+                struct sockaddr *soin = NULL;
+                size_t soin_size = 0;
+                struct sockaddr_in soin4;
+                struct sockaddr_in6 soin6;
+                if ([addressData length] == sizeof(struct sockaddr_in)) {
+                    // IPv4 address
+                    [addressData getBytes:&soin4 length:sizeof(soin4)];
+                    soin4.sin_port = htons(weakSelf.port);
+                    soin_size = sizeof(soin4);
+                    soin = (struct sockaddr*)(&soin4);
+                } else if([addressData length] == sizeof(struct sockaddr_in6)) {
+                    // IPv6 address
+                    [addressData getBytes:&soin6 length:sizeof(soin6)];
+                    soin6.sin6_port = htons(weakSelf.port);
+                    soin_size = sizeof(soin6);
+                    soin = (struct sockaddr*)(&soin6);
+                }
+
+                // restart the timer
+                dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
+                dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+
+                // Create a socket
+                int sock = socket(soin->sa_family, SOCK_STREAM, 0);
+                int set = 1;
+                setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+
+                if (sock == -1) {
+                    [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
+                                         errorDescription:@"Unable to create socket"];
+                    weakSelf.connectionSuccessBlock = nil;
+                    return;
+                }
+                result = connect(sock, soin, soin_size);
+                if (result == 0) {
+                    // we've connected, stop trying addresses
+                    weakSelf.socket = sock;
+                    break;
+                } else {
+                    // close this socket and try the next address
+                    close(sock);
+                }
+            }
             // cancel the timeout timer after connecting
             if (timeoutTimer) {
                 dispatch_source_cancel(timeoutTimer);
             }
+
             if (result == 0) {
                 // connected socket, start the SFTP session
                 [weakSelf startSFTPSession];
