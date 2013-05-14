@@ -79,6 +79,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 @property (nonatomic, assign) NSUInteger port;
 
 @property (nonatomic, assign) int socket;
+@property (nonatomic, assign) dispatch_source_t timeoutTimer;
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
@@ -558,26 +559,19 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     } else {
         __weak DLSFTPConnection *weakSelf = self;
         // set up a timeout handler
-        __block dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
+        dispatch_source_t timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0,
+                                                                dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
+        self.timeoutTimer = timeoutTimer;
         dispatch_source_set_event_handler(timeoutTimer, ^{
-            // timeout fired, close the socket
-            dispatch_sync([weakSelf socketQueue], ^{
-                [weakSelf _disconnect]; // closes on socketQueue
-            });
-            // and fail
-            [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
-                                 errorDescription:@"Connection timed out"];
-            // clear out the queued success block
-            weakSelf.connectionSuccessBlock = nil;
-            dispatch_source_cancel(timeoutTimer);
+            [weakSelf timeoutTimerHandler];
         });
 
         // On cancel, release the timer if necessary
         dispatch_source_set_cancel_handler(timeoutTimer, ^{
             #if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(timeoutTimer);
+            dispatch_release(weakSelf.timeoutTimer);
             #endif
-            timeoutTimer = NULL;
+            weakSelf.timeoutTimer = NULL;
         });
 
         // Resume the timer but don't set its fire time until we're about to try connecting
@@ -611,72 +605,147 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             }
             CFRelease(hostRef);
             // Get a connection
-            int result = -1;
-            for (NSData *addressData in addresses) {
-                struct sockaddr *soin = NULL;
-                size_t soin_size = 0;
-                struct sockaddr_in soin4;
-                struct sockaddr_in6 soin6;
-                if ([addressData length] == sizeof(struct sockaddr_in)) {
-                    // IPv4 address
-                    [addressData getBytes:&soin4 length:sizeof(soin4)];
-                    soin4.sin_port = htons(weakSelf.port);
-                    soin_size = sizeof(soin4);
-                    soin = (struct sockaddr*)(&soin4);
-                } else if([addressData length] == sizeof(struct sockaddr_in6)) {
-                    // IPv6 address
-                    [addressData getBytes:&soin6 length:sizeof(soin6)];
-                    soin6.sin6_port = htons(weakSelf.port);
-                    soin_size = sizeof(soin6);
-                    soin = (struct sockaddr*)(&soin6);
-                }
-
-                // restart the timer
-                dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
-                dispatch_source_set_timer(timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
-
-                // Create a socket
-                int sock = socket(soin->sa_family, SOCK_STREAM, 0);
-                int set = 1;
-                setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
-
-                if (sock == -1) {
-                    [weakSelf failConnectionWithErrorCode:eSFTPClientErrorSocketError
-                                         errorDescription:@"Unable to create socket"];
-                    weakSelf.connectionSuccessBlock = nil;
-                    return;
-                }
-                result = connect(sock, soin, soin_size);
-                if (result == 0) {
-                    // we've connected, stop trying addresses
-                    weakSelf.socket = sock;
-                    break;
-                } else {
-                    // close this socket and try the next address
-                    close(sock);
-                }
-            }
-            // cancel the timeout timer after connecting
-            if (timeoutTimer) {
-                dispatch_source_cancel(timeoutTimer);
-            }
-
-            if (result == 0) {
-                // connected socket, start the SFTP session
-                [weakSelf startSFTPSession];
-            } else {
-                NSString *errorDescription = [NSString stringWithFormat:@"Unable to connect: socket error: %d", result];
-                [weakSelf failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
-                                     errorDescription:errorDescription];
-                weakSelf.connectionSuccessBlock = nil;
-                return;
-            }
+            [weakSelf connectToAddressAtIndex:0 inArray:addresses];
         });
     }
 }
 
+- (void)connectToAddressAtIndex:(NSUInteger)index inArray:(NSArray *)addresses {
+    if (index >= [addresses count]) {
+        [self failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
+                         errorDescription:@"Unable to connect"];
+        self.connectionSuccessBlock = nil;
+        return;
+    }
+    __weak DLSFTPConnection *weakSelf = self;
+    NSData *addressData = [addresses objectAtIndex:index];
+    int result = -1;
+    struct sockaddr *soin = NULL;
+    size_t soin_size = 0;
+    struct sockaddr_in soin4;
+    struct sockaddr_in6 soin6;
+    if ([addressData length] == sizeof(struct sockaddr_in)) {
+        // IPv4 address
+        [addressData getBytes:&soin4 length:sizeof(soin4)];
+        soin4.sin_port = htons(self.port);
+        soin_size = sizeof(soin4);
+        soin = (struct sockaddr*)(&soin4);
+    } else if([addressData length] == sizeof(struct sockaddr_in6)) {
+        // IPv6 address
+        [addressData getBytes:&soin6 length:sizeof(soin6)];
+        soin6.sin6_port = htons(self.port);
+        soin_size = sizeof(soin6);
+        soin = (struct sockaddr*)(&soin6);
+    } else {
+        // Unknown address length
+        dispatch_group_async(_connectionGroup, _socketQueue, ^{
+            [weakSelf connectToAddressAtIndex:index + 1
+                                      inArray:addresses];
+        });
+        return;
+    }
+    // restart the timer
+    dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
+    dispatch_source_set_timer(self.timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+
+    // Create a socket
+    int sock = socket(soin->sa_family, SOCK_STREAM, 0);
+
+    int set = 1;
+    setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+
+    // Configure socket for non-blocking
+    int existingFlags = fcntl(sock, F_GETFL);
+    int flags = fcntl(sock, F_SETFL, existingFlags | O_NONBLOCK);
+    if (flags) {
+        close(sock);
+        [self failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
+                         errorDescription:@"Unable to configure socket connection for non-blocking"];
+        self.connectionSuccessBlock = nil;
+        return;
+    }
+
+    if (sock == -1) { // no socket
+        [self failConnectionWithErrorCode:eSFTPClientErrorSocketError
+                         errorDescription:@"Unable to create socket"];
+        self.connectionSuccessBlock = nil;
+        return;
+    }
+
+    // set up a dispatch source to monitor the socket fd
+    dispatch_source_t write_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, dispatch_get_current_queue());
+    dispatch_group_t connectionGroup = _connectionGroup;
+    dispatch_block_t connected_handler = ^{
+        weakSelf.socket = sock;
+        if (weakSelf.timeoutTimer) {
+            dispatch_source_cancel(weakSelf.timeoutTimer);
+        }
+        [weakSelf startSFTPSession];
+    };
+    // enter the connectionGroup explicitly to keep the group alive while waiting for the dispatch source
+    dispatch_group_enter(connectionGroup);
+    dispatch_block_t sock_handler = ^{
+        weakSelf.socket = sock;
+        dispatch_source_cancel(write_source);
+        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
+        dispatch_group_leave(connectionGroup);
+    };
+
+    dispatch_source_set_event_handler(write_source, sock_handler);
+    dispatch_source_set_cancel_handler(write_source, ^{
+        #if NEEDS_DISPATCH_RETAIN_RELEASE
+        dispatch_release(write_source);
+        #endif
+    });
+
+    // Update the timeout timer to cancel the dispatch source
+    dispatch_source_set_event_handler(self.timeoutTimer, ^{
+        if (dispatch_source_testcancel(write_source)) {
+            dispatch_source_cancel(write_source);
+        }
+        [weakSelf timeoutTimerHandler];
+        dispatch_group_leave(connectionGroup);
+    });
+    dispatch_resume(write_source);
+
+    // connect result
+    result = connect(sock, soin, soin_size);
+    if (result == 0) {
+        // connected immediately
+        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
+    } else if (errno == EINPROGRESS || errno == EALREADY) {
+        // connecting, wait for the handler to be called and leave the dispatch group
+        return;
+    } else {
+        // error, close this socket and try the next address
+        close(sock);
+        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), ^{
+            [weakSelf connectToAddressAtIndex:index + 1
+                                      inArray:addresses];
+        });
+    }
+}
+
+- (void)timeoutTimerHandler {
+    // timeout fired, close the socket
+    __weak DLSFTPConnection *weakSelf = self;
+    dispatch_sync([weakSelf socketQueue], ^{
+        [weakSelf _disconnect]; // closes on socketQueue
+    });
+    // and fail
+    [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
+                         errorDescription:@"Connection timed out"];
+    // clear out the queued success block
+    weakSelf.connectionSuccessBlock = nil;
+    dispatch_source_cancel(weakSelf.timeoutTimer);
+}
+
 - (void)disconnect {
     [self cancelAllRequests];
+    // cancel the connection timeout timer if running
+    if (self.timeoutTimer) {
+        dispatch_source_cancel(self.timeoutTimer);
+    }
     dispatch_sync(_socketQueue, ^{
         [self _disconnect];
     });
