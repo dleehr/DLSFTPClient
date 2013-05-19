@@ -67,6 +67,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
     // idle timer
     dispatch_source_t _idleTimer;
+
+    // socket source
+    dispatch_source_t _writeSource;
 }
 
 @property (nonatomic, copy) DLSFTPClientSuccessBlock connectionSuccessBlock;
@@ -172,6 +175,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 }
 
 - (void)dealloc {
+    [self _disconnect];
     #if NEEDS_DISPATCH_RETAIN_RELEASE
     dispatch_release(_requestQueue);
     _requestQueue = NULL;
@@ -184,7 +188,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         _idleTimer = NULL;
     }
     #endif
-    [self _disconnect];
 }
 
 - (dispatch_queue_t)socketQueue {
@@ -192,6 +195,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 }
 - (dispatch_queue_t)requestQueue {
     return _requestQueue;
+}
+- (dispatch_source_t)writeSource {
+    return _writeSource;
 }
 
 - (dispatch_source_t)idleTimer {
@@ -265,6 +271,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 - (void)_disconnect {
     if (_idleTimer) { // avoid cancelling after dealloc
         [self cancelIdleTimer];
+    }
+    if (_writeSource && dispatch_source_testcancel(_writeSource) == 0) {
+        dispatch_source_cancel(_writeSource);
     }
     [self shutdownSftp];
     [self disconnectSession];
@@ -673,7 +682,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
 
     // set up a dispatch source to monitor the socket fd
-    dispatch_source_t write_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, dispatch_get_current_queue());
+    _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, dispatch_get_current_queue());
     dispatch_group_t connectionGroup = _connectionGroup;
     dispatch_block_t connected_handler = ^{
         weakSelf.socket = sock;
@@ -686,27 +695,34 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_group_enter(connectionGroup);
     dispatch_block_t sock_handler = ^{
         weakSelf.socket = sock;
-        dispatch_source_cancel(write_source);
+        dispatch_source_t writeSource = [weakSelf writeSource];
+        if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
+            dispatch_source_cancel(writeSource);
+        }
         dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
-        dispatch_group_leave(connectionGroup);
     };
 
-    dispatch_source_set_event_handler(write_source, sock_handler);
-    dispatch_source_set_cancel_handler(write_source, ^{
-        #if NEEDS_DISPATCH_RETAIN_RELEASE
-        dispatch_release(write_source);
-        #endif
+    dispatch_source_set_event_handler(_writeSource, sock_handler);
+    dispatch_source_set_cancel_handler(_writeSource, ^{
+        dispatch_group_leave(connectionGroup);
+        DLSFTPConnection *strongSelf = weakSelf;
+        if (strongSelf) {
+            #if NEEDS_DISPATCH_RETAIN_RELEASE
+            dispatch_release(strongSelf->_writeSource);
+            #endif
+            strongSelf->_writeSource = NULL;
+        }
     });
 
     // Update the timeout timer to cancel the dispatch source
     dispatch_source_set_event_handler(self.timeoutTimer, ^{
-        if (dispatch_source_testcancel(write_source)) {
-            dispatch_source_cancel(write_source);
+        dispatch_source_t writeSource = [weakSelf writeSource];
+        if (dispatch_source_testcancel(writeSource) == 0) {
+            dispatch_source_cancel(writeSource);
         }
         [weakSelf timeoutTimerHandler];
-        dispatch_group_leave(connectionGroup);
     });
-    dispatch_resume(write_source);
+    dispatch_resume(_writeSource);
 
     // connect result
     result = connect(sock, soin, soin_size);
