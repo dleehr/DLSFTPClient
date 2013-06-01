@@ -53,6 +53,7 @@ typedef enum {
     eSFTPClientErrorNotImplemented,
     eSFTPClientErrorOperationInProgress,
     eSFTPClientErrorInvalidArguments,
+    eSFTPClientErrorInvalidPath,
     eSFTPClientErrorAlreadyConnected,
     eSFTPClientErrorConnectionTimedOut,
     eSFTPClientErrorUnableToResolveHostname,

@@ -79,7 +79,7 @@ static NSString * const DLSFTPRequestNotImplemented = @"DLSFTPRequestMethodNotIm
 }
 - (BOOL)pathIsValid:(NSString *)path {
     if ([path length] == 0) {
-        self.error = [self errorWithCode:eSFTPClientErrorInvalidArguments
+        self.error = [self errorWithCode:eSFTPClientErrorInvalidPath
                         errorDescription:@"Invalid path"
                          underlyingError:nil];
         return NO;

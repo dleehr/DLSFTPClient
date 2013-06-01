@@ -142,7 +142,7 @@ static const size_t cBufferSize = 8192;
         NSDictionary *localAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:self.localPath
                                                                                          error:&error];
         if (error) {
-            self.error = [self errorWithCode:eSFTPClientErrorUnableToReadFile
+            self.error = [self errorWithCode:eSFTPClientErrorUnableToOpenLocalFileForWriting
                             errorDescription:@"Unable to get attributes (file size) of existing file"
                              underlyingError:@(error.code)];
             [self.connection requestDidFail:self withError:self.error];
