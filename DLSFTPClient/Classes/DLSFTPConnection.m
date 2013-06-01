@@ -668,7 +668,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     int flags = fcntl(sock, F_SETFL, existingFlags | O_NONBLOCK);
     if (flags) {
         close(sock);
-        [self failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
+        [self failConnectionWithErrorCode:eSFTPClientErrorSocketError
                          errorDescription:@"Unable to configure socket connection for non-blocking"];
         self.connectionSuccessBlock = nil;
         return;
