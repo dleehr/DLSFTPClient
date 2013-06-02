@@ -8,7 +8,7 @@ DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access
 
 ## Status
 
-DLSFTPClient is a work in progress.  The API is subject to change, and there is still much to do, so I do not recommend using it in a shipping app.  However, it's been a good way to learn a lot of [Grand Central Dispatch](https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html).
+As of 2013-06-01, DLSFTPClient is considered stable.  There are no plans to further change the API, though there may be continued efforts to further leverage [Grand Central Dispatch](https://developer.apple.com/library/ios/#documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html).
 
 
 ## Sample Usage
@@ -31,7 +31,7 @@ To disconnect, use `disconnect`
 
     [connection disconnect];
 
-Blocks are dispatched to the global concurrent queue.  Be sure to dispatch back to the main queue if you need to drive UI updates.                                                                     
+Your success and failure blocks are dispatched to the global concurrent queue.  Be sure to dispatch back to the main queue if you need to drive UI updates.                                                                     
 
 Operations such as listing directory contents, downloading files, and moving/renaming are carried out through subclasses of `DLSFTPRequest`:
 
@@ -69,7 +69,7 @@ DLSFTPClient includes two test case classes.  To use them, you'll need to copy `
 
 ## Remaining issues
 
-The Demo App is incomplete and needs some polish.  On 2013-03-09, the entire connection/request architecture was refactored.  The app passes all of its unit tests.
+The Demo App is incomplete and needs some polish.
 
 ## Project Dependencies
 
