@@ -621,6 +621,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (void)connectToAddressAtIndex:(NSUInteger)index inArray:(NSArray *)addresses {
     if (index >= [addresses count]) {
+        [self _disconnect];
         [self failConnectionWithErrorCode:eSFTPClientErrorUnableToConnect
                          errorDescription:@"Unable to connect"];
         self.connectionSuccessBlock = nil;
@@ -685,7 +686,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, dispatch_get_current_queue());
     dispatch_group_t connectionGroup = _connectionGroup;
     dispatch_block_t connected_handler = ^{
-        weakSelf.socket = sock;
         if (weakSelf.timeoutTimer) {
             dispatch_source_cancel(weakSelf.timeoutTimer);
         }
@@ -694,17 +694,29 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     // enter the connectionGroup explicitly to keep the group alive while waiting for the dispatch source
     dispatch_group_enter(connectionGroup);
     dispatch_block_t sock_handler = ^{
-        weakSelf.socket = sock;
-        dispatch_source_t writeSource = [weakSelf writeSource];
-        if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
-            dispatch_source_cancel(writeSource);
+        int error;
+        socklen_t len = sizeof(error);
+        getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len);
+        if (error) {
+            // try the next address
+            close(sock);
+            dispatch_group_async(connectionGroup, dispatch_get_current_queue(), ^{
+                [weakSelf connectToAddressAtIndex:index + 1
+                                          inArray:addresses];
+            });
+        } else {
+            weakSelf.socket = sock;
+            dispatch_source_t writeSource = [weakSelf writeSource];
+            if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
+                dispatch_source_cancel(writeSource);
+            }
+            dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
         }
-        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
+        dispatch_group_leave(connectionGroup);
     };
 
     dispatch_source_set_event_handler(_writeSource, sock_handler);
     dispatch_source_set_cancel_handler(_writeSource, ^{
-        dispatch_group_leave(connectionGroup);
         DLSFTPConnection *strongSelf = weakSelf;
         if (strongSelf) {
             #if NEEDS_DISPATCH_RETAIN_RELEASE
@@ -717,7 +729,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     // Update the timeout timer to cancel the dispatch source
     dispatch_source_set_event_handler(self.timeoutTimer, ^{
         dispatch_source_t writeSource = [weakSelf writeSource];
-        if (dispatch_source_testcancel(writeSource) == 0) {
+        if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
             dispatch_source_cancel(writeSource);
         }
         [weakSelf timeoutTimerHandler];
