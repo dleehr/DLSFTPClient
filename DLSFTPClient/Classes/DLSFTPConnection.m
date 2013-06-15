@@ -716,7 +716,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             }
             dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
         }
-        dispatch_group_leave(connectionGroup);
     };
 
     dispatch_source_set_event_handler(_writeSource, sock_handler);
@@ -728,6 +727,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             #endif
             strongSelf->_writeSource = NULL;
         }
+        dispatch_group_leave(connectionGroup);
     });
 
     // Update the timeout timer to cancel the dispatch source
