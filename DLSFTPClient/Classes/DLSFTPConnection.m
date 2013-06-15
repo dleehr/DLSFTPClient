@@ -577,10 +577,12 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
         // On cancel, release the timer if necessary
         dispatch_source_set_cancel_handler(timeoutTimer, ^{
-            #if NEEDS_DISPATCH_RETAIN_RELEASE
-            dispatch_release(weakSelf.timeoutTimer);
-            #endif
-            weakSelf.timeoutTimer = NULL;
+            if (weakSelf.timeoutTimer) {
+                #if NEEDS_DISPATCH_RETAIN_RELEASE
+                dispatch_release(weakSelf.timeoutTimer);
+                #endif
+                weakSelf.timeoutTimer = NULL;
+            }
         });
 
         // Resume the timer but don't set its fire time until we're about to try connecting
