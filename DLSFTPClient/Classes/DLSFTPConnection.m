@@ -658,7 +658,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
     // restart the timer
     dispatch_time_t fireTime = dispatch_time(DISPATCH_TIME_NOW, cDefaultConnectionTimeout * NSEC_PER_SEC);
-    dispatch_source_set_timer(self.timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+    if (self.timeoutTimer) {
+        dispatch_source_set_timer(self.timeoutTimer, fireTime, DISPATCH_TIME_FOREVER, 0);
+    }
 
     // Create a socket
     int sock = socket(soin->sa_family, SOCK_STREAM, 0);
@@ -729,13 +731,15 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     });
 
     // Update the timeout timer to cancel the dispatch source
-    dispatch_source_set_event_handler(self.timeoutTimer, ^{
-        dispatch_source_t writeSource = [weakSelf writeSource];
-        if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
-            dispatch_source_cancel(writeSource);
-        }
-        [weakSelf timeoutTimerHandler];
-    });
+    if (self.timeoutTimer) {
+        dispatch_source_set_event_handler(self.timeoutTimer, ^{
+            dispatch_source_t writeSource = [weakSelf writeSource];
+            if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
+                dispatch_source_cancel(writeSource);
+            }
+            [weakSelf timeoutTimerHandler];
+        });
+    }
     dispatch_resume(_writeSource);
 
     // connect result
@@ -767,7 +771,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
                          errorDescription:@"Connection timed out"];
     // clear out the queued success block
     weakSelf.connectionSuccessBlock = nil;
-    dispatch_source_cancel(weakSelf.timeoutTimer);
+    if (weakSelf.timeoutTimer) {
+        dispatch_source_cancel(weakSelf.timeoutTimer);
+    }
 }
 
 - (void)disconnect {
