@@ -720,7 +720,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_source_set_event_handler(_writeSource, sock_handler);
     dispatch_source_set_cancel_handler(_writeSource, ^{
         DLSFTPConnection *strongSelf = weakSelf;
-        if (strongSelf) {
+        if (strongSelf && strongSelf->_writeSource) {
             #if NEEDS_DISPATCH_RETAIN_RELEASE
             dispatch_release(strongSelf->_writeSource);
             #endif
