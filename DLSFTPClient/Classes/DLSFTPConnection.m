@@ -253,8 +253,12 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     if (_sftp == NULL) {
         LIBSSH2_SESSION *session = self.session;
         // initialize sftp in non-blocking
+        // Hack to limit the number of tries here, because
+        // hosts without SFTP trigger an infinite loop
+        int retries = 0, max = 10;
         while (   (_sftp = libssh2_sftp_init(session)) == NULL
-               && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)) {
+               && (libssh2_session_last_errno(session) == LIBSSH2_ERROR_EAGAIN)
+               && (retries++ < max)) {
             waitsocket(self.socket, session);
         }
     }
