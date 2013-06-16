@@ -202,7 +202,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (dispatch_source_t)idleTimer {
     if (_idleTimer == NULL) {
-        _idleTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _socketQueue);
+        _idleTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
         dispatch_source_set_timer(_idleTimer, DISPATCH_TIME_FOREVER, DISPATCH_TIME_FOREVER, 0);
         __weak DLSFTPConnection *weakSelf = self;
         dispatch_source_set_event_handler(_idleTimer, ^{
@@ -442,6 +442,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             [weakSelf.requests removeObjectAtIndex:0];
             weakSelf.currentRequest = request;
             [weakSelf startRequest];
+        } else {
+            // start the idle timer
+            [weakSelf startIdleTimer];
         }
     });
 }
