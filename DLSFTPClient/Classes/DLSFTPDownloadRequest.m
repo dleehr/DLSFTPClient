@@ -275,16 +275,6 @@ static const size_t cBufferSize = 8192;
     while (   self.isCancelled == NO
            && (bytesRead = libssh2_sftp_read(self.handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
         waitsocket([self.connection socket], [self.connection session]);
-        if (self.isCancelled) {
-            printf("request is cancelled after waitsocket\n");
-        }
-    }
-    if (self.isCancelled) {
-        self.error = [self errorWithCode:eSFTPClientErrorCancelledByUser
-                        errorDescription:@"Cancelled by user."
-                         underlyingError:nil];
-        [self.connection requestDidFail:self withError:self.error];
-        return;
     }
     // after data has been read, write it to the channel
     __weak DLSFTPDownloadRequest *weakSelf = self;
@@ -307,7 +297,7 @@ static const size_t cBufferSize = 8192;
 #endif
         // read the next chunk
         dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadChunk]; });
-    } else if(bytesRead == 0) {
+    } else if(bytesRead == 0 || self.isCancelled) { // not a host error if cancelled
         dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadFinished]; });
     } else { //bytesRead < 0
         dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadFailed]; });
@@ -329,6 +319,22 @@ static const size_t cBufferSize = 8192;
 #endif
     int socketFD = [self.connection socket];
     LIBSSH2_SESSION *session = [self.connection session];
+    // now close the remote handle
+    int result = 0;
+    if (self.handle) {
+        while((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN) {
+            waitsocket(socketFD, session);
+        }
+        self.handle = NULL;
+    }
+    if (result) {
+        NSString *errorDescription = [NSString stringWithFormat:@"Close file handle failed with code %d", result];
+        self.error = [self errorWithCode:eSFTPClientErrorUnableToCloseFile
+                        errorDescription:errorDescription
+                         underlyingError:nil];
+        [self.connection requestDidFail:self withError:self.error];
+        return;
+    }
     if (self.isCancelled) {
         // cancelled by user
         if (self.handle) {
@@ -350,25 +356,9 @@ static const size_t cBufferSize = 8192;
                          underlyingError:nil];
         [self.connection requestDidFail:self withError:self.error];
         return;
+    } else {
+        [self.connection requestDidComplete:self];
     }
-
-    // now close the remote handle
-    int result = 0;
-    if (self.handle) {
-        while((result = libssh2_sftp_close_handle(self.handle)) == LIBSSH2SFTP_EAGAIN) {
-            waitsocket(socketFD, session);
-        }
-        self.handle = NULL;
-    }
-    if (result) {
-        NSString *errorDescription = [NSString stringWithFormat:@"Close file handle failed with code %d", result];
-        self.error = [self errorWithCode:eSFTPClientErrorUnableToCloseFile
-                        errorDescription:errorDescription
-                         underlyingError:nil];
-        [self.connection requestDidFail:self withError:self.error];
-        return;
-    }
-    [self.connection requestDidComplete:self];
 }
 
 - (void)downloadFailed {
