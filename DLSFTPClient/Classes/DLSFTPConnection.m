@@ -558,13 +558,18 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
     self.connectionSuccessBlock = successBlock;
     self.connectionFailureBlock = failureBlock;
-    if (   ([self.hostname length] == 0)
-        || ([self.username length] == 0)
-        || ([self.password length] == 0 && [self.keypath length] == 0)
-        || (self.port == 0)) {
-                // don't have valid arguments
-        [self failConnectionWithErrorCode:eSFTPClientErrorInvalidArguments
-                         errorDescription:@"Invalid arguments"];
+    if ([self.hostname length] == 0) {
+        [self failConnectionWithErrorCode:eSFTPClientErrorInvalidHostname
+                         errorDescription:@"Invalid hostname"];
+        return;
+    } else if([self.username length] == 0) {
+        [self failConnectionWithErrorCode:eSFTPClientErrorInvalidUsername
+                         errorDescription:@"Invalid username"];
+        return;
+
+    } else if([self.password length] == 0 && [self.keypath length] == 0) {
+        [self failConnectionWithErrorCode:eSFTPClientErrorInvalidPasswordOrKey
+                         errorDescription:@"Invalid password or key path"];
         return;
     } else if(self.socket >= 0) {
         // already have a socket
