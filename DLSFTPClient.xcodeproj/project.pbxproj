@@ -672,6 +672,95 @@
 			};
 			name = Release;
 		};
+		376C09161808BC0C009D2BB3 /* Debug With Optimizations */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/../libssh2-for-iOS/include\"/**";
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug With Optimizations";
+		};
+		376C09171808BC0C009D2BB3 /* Debug With Optimizations */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				HEADER_SEARCH_PATHS = (
+					"${PODS_HEADERS_SEARCH_PATHS}",
+					"\"$(SRCROOT)/../libssh2-for-iOS/include\"/**",
+				);
+				INFOPLIST_FILE = "DLSFTPClient/DLSFTPClient-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = DLSFTPClient;
+				WRAPPER_EXTENSION = app;
+			};
+			name = "Debug With Optimizations";
+		};
+		376C09181808BC0C009D2BB3 /* Debug With Optimizations */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				DSTROOT = /tmp/SFTPClient.dst;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/DLSFTPClient-Prefix.pch";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = "Debug With Optimizations";
+		};
+		376C09191808BC0C009D2BB3 /* Debug With Optimizations */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/DLSFTPClient.app/DLSFTPClient";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"\"$(SDKROOT)/Developer/Library/Frameworks\"",
+					"\"$(DEVELOPER_LIBRARY_DIR)/Frameworks\"",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "DLSFTPClient/Tests/DLSFTPClientTests-Prefix.pch";
+				INFOPLIST_FILE = "DLSFTPClient/Tests/DLSFTPClientTests-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/../libssh2-for-iOS/lib\"",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = octest;
+			};
+			name = "Debug With Optimizations";
+		};
 		37D6E560176D0E8700A8E5B2 /* Release Ad-Hoc */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -896,6 +985,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				372F7BEE162CDDE60038F852 /* Debug */,
+				376C09181808BC0C009D2BB3 /* Debug With Optimizations */,
 				372F7BEF162CDDE60038F852 /* Release */,
 				37D6E566176D0E9100A8E5B2 /* Release Distribution */,
 				37D6E562176D0E8700A8E5B2 /* Release Ad-Hoc */,
@@ -907,6 +997,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3734F04015D699FE0078A7E5 /* Debug */,
+				376C09161808BC0C009D2BB3 /* Debug With Optimizations */,
 				3734F04115D699FE0078A7E5 /* Release */,
 				37D6E564176D0E9100A8E5B2 /* Release Distribution */,
 				37D6E560176D0E8700A8E5B2 /* Release Ad-Hoc */,
@@ -918,6 +1009,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3734F04315D699FE0078A7E5 /* Debug */,
+				376C09171808BC0C009D2BB3 /* Debug With Optimizations */,
 				3734F04415D699FE0078A7E5 /* Release */,
 				37D6E565176D0E9100A8E5B2 /* Release Distribution */,
 				37D6E561176D0E8700A8E5B2 /* Release Ad-Hoc */,
@@ -929,6 +1021,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				37DB18B81699EB300053D51A /* Debug */,
+				376C09191808BC0C009D2BB3 /* Debug With Optimizations */,
 				37DB18B91699EB300053D51A /* Release */,
 				37D6E567176D0E9100A8E5B2 /* Release Distribution */,
 				37D6E563176D0E8700A8E5B2 /* Release Ad-Hoc */,
