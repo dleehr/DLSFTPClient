@@ -190,7 +190,7 @@ static const size_t cBufferSize = 8192;
                              }
                              dispatch_data_applier_t applier = ^bool(dispatch_data_t region, size_t offset, const void *buffer, size_t size) {
                                  // send the buffer
-                                 int sftp_result = 0;
+                                 size_t sftp_result = 0;
                                  while (   weakSelf.isCancelled == NO
                                         && (sftp_result = libssh2_sftp_write(weakSelf.handle, buffer + offset, size)) == LIBSSH2SFTP_EAGAIN) {
                                      // update shouldcontinue into the waitsocket file desctiptor
@@ -249,7 +249,7 @@ static const size_t cBufferSize = 8192;
 
     if (self.sftp_result < 0) { // error on last call to upload
         // get the error before closing the file
-        int result = libssh2_sftp_last_error(sftp);
+        unsigned long result = libssh2_sftp_last_error(sftp);
         if(self.handle) {
             while(   (libssh2_sftp_close_handle(self.handle) == LIBSSH2SFTP_EAGAIN)
                   && self.isCancelled == NO) {
@@ -262,7 +262,7 @@ static const size_t cBufferSize = 8192;
             return;
         }
         // error writing
-        NSString *errorDescription = [NSString stringWithFormat:@"Write file failed with code %d.", result];
+        NSString *errorDescription = [NSString stringWithFormat:@"Write file failed with code %lu.", result];
         self.error = [self errorWithCode:eSFTPClientErrorUnableToWriteFile
                         errorDescription:errorDescription
                          underlyingError:@(result)];

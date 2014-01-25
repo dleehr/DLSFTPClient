@@ -270,7 +270,7 @@ static const size_t cBufferSize = 8192;
 }
 
 - (void)downloadChunk {
-    int bytesRead = 0;
+    size_t bytesRead = 0;
     char buffer[cBufferSize];
     while (   self.isCancelled == NO
            && (bytesRead = libssh2_sftp_read(self.handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
@@ -375,7 +375,7 @@ static const size_t cBufferSize = 8192;
     self.semaphore = NULL;
 #endif
     // get the error before closing the file
-    int result = libssh2_sftp_last_error([self.connection sftp]);
+    unsigned long result = libssh2_sftp_last_error([self.connection sftp]);
     int socketFD = [self.connection socket];
     LIBSSH2_SESSION *session = [self.connection session];
     if (self.handle) {
@@ -385,7 +385,7 @@ static const size_t cBufferSize = 8192;
         self.handle = NULL;
     }
     // error reading
-    NSString *errorDescription = [NSString stringWithFormat:@"Read file failed with code %d.", result];
+    NSString *errorDescription = [NSString stringWithFormat:@"Read file failed with code %lu.", result];
     self.error = [self errorWithCode:eSFTPClientErrorUnableToReadFile
                     errorDescription:errorDescription
                      underlyingError:@(result)];

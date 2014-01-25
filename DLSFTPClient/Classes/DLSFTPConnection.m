@@ -299,7 +299,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
     [self cancelAllRequests];
     if (self.connectionFailureBlock) {
-        NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with reason %d: %@", reason, message];
+        NSString *errorDescription = [NSString stringWithFormat:@"Disconnected with reason %ld: %@", (long)reason, message];
         [self failConnectionWithErrorCode:eSFTPClientErrorDisconnected
                          errorDescription:errorDescription];
     }
@@ -323,7 +323,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         }
         // valid session, get the socket descriptor
         // must be called from socket's queue
-        int result;
+        long result;
         while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
                && weakSelf.isConnected) {
             waitsocket(socketFD, session);
@@ -333,7 +333,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             // free the session and close the socket
             [weakSelf _disconnect];
 
-            NSString *errorDescription = [NSString stringWithFormat:@"Handshake failed with code %d", result];
+            NSString *errorDescription = [NSString stringWithFormat:@"Handshake failed with code %ld", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorHandshakeFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
@@ -382,7 +382,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
             // authentication failed
             // disconnect to disconnect/free the session and close the socket
             [weakSelf _disconnect];
-            NSString *errorDescription = [NSString stringWithFormat:@"Authentication failed with code %d", result];
+            NSString *errorDescription = [NSString stringWithFormat:@"Authentication failed with code %ld", result];
             NSError *error = [NSError errorWithDomain:SFTPClientErrorDomain
                                                  code:eSFTPClientErrorAuthenticationFailed
                                              userInfo:@{ NSLocalizedDescriptionKey : errorDescription, SFTPClientUnderlyingErrorKey : @(result) }];
@@ -645,7 +645,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     NSData *addressData = [addresses objectAtIndex:index];
     int result = -1;
     struct sockaddr *soin = NULL;
-    size_t soin_size = 0;
+    socklen_t soin_size = 0;
     struct sockaddr_in soin4;
     struct sockaddr_in6 soin6;
     if ([addressData length] == sizeof(struct sockaddr_in)) {
