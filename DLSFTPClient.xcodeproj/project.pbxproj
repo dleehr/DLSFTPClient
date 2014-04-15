@@ -405,6 +405,7 @@
 		3734F02115D699FE0078A7E5 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastTestingUpgradeCheck = 0510;
 				LastUpgradeCheck = 0460;
 				ORGANIZATIONNAME = "Dan Leehr";
 			};
