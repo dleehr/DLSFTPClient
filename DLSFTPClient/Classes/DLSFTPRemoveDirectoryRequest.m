@@ -64,7 +64,7 @@
     int socketFD = [self.connection socket];
 
     // sftp is now valid
-    int result;
+    long result;
     while(  ((result = (libssh2_sftp_rmdir(sftp, [self.directoryPath UTF8String]))) == LIBSSH2SFTP_EAGAIN)
           && self.isCancelled == NO) {
         waitsocket(socketFD, session);
@@ -77,7 +77,7 @@
 
     if (result) {
         // unable to remove
-        NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove directory: SFTP Status Code %d", result];
+        NSString *errorDescription = [NSString stringWithFormat:@"Unable to remove directory: SFTP Status Code %ld", result];
         self.error = [self errorWithCode:eSFTPClientErrorUnableToRemove
                         errorDescription:errorDescription
                          underlyingError:@(result)];

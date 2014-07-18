@@ -119,7 +119,7 @@ static NSString * cRootPath = @"/";
     
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %ld", error.domain, (long)error.code];
             UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
                                                                 message:[error localizedDescription]
                                                                delegate:nil
@@ -248,7 +248,7 @@ static NSString * cRootPath = @"/";
         };
 
         DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
-            NSString *errorString = [NSString stringWithFormat:@"Error %d", error.code];
+            NSString *errorString = [NSString stringWithFormat:@"Error %ld", (long)error.code];
             UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:errorString
                                                                 message:error.localizedDescription
                                                                delegate:nil

@@ -220,7 +220,7 @@ enum eFieldIndex {
             weakSelf.connection = nil;
             loginButton.enabled = YES;
             // login failure
-            NSString *title = [NSString stringWithFormat:@"%@ Error: %d", error.domain, error.code];
+            NSString *title = [NSString stringWithFormat:@"%@ Error: %ld", error.domain, (long)error.code];
             UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title
                                                                 message:[error localizedDescription]
                                                                delegate:nil

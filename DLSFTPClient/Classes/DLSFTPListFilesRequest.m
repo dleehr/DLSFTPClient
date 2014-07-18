@@ -101,7 +101,7 @@ static const size_t cBufferSize = 8192;
     char buffer[cBufferSize];
     LIBSSH2_SFTP_ATTRIBUTES attributes;
     NSMutableArray *fileList = [[NSMutableArray alloc] init];
-    int result = 0;
+    long result = 0;
 
     do {
         while (   ((result = libssh2_sftp_readdir(handle, buffer, cBufferSize, &attributes)) == LIBSSH2SFTP_EAGAIN)
@@ -133,7 +133,7 @@ static const size_t cBufferSize = 8192;
             waitsocket(socketFD, session);
         }
         // error reading
-        NSString *errorDescription = [NSString stringWithFormat:@"Read directory failed with code %d", result];
+        NSString *errorDescription = [NSString stringWithFormat:@"Read directory failed with code %ld", result];
         self.error = [self errorWithCode:eSFTPClientErrorUnableToReadDirectory
                         errorDescription:errorDescription
                          underlyingError:@(result)];
@@ -147,7 +147,7 @@ static const size_t cBufferSize = 8192;
         waitsocket(socketFD, session);
     }
     if (result) {
-        NSString *errorDescription = [NSString stringWithFormat:@"Close directory handle failed with code %d", result];
+        NSString *errorDescription = [NSString stringWithFormat:@"Close directory handle failed with code %ld", result];
         self.error = [self errorWithCode:eSFTPClientErrorUnableToCloseDirectory
                         errorDescription:errorDescription
                          underlyingError:@(result)];
