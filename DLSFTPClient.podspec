@@ -16,6 +16,6 @@ Pod::Spec.new do |s|
 
   s.source_files = 'DLSFTPClient/Classes/*.{h,m}', 'DLSFTPClient/Libraries/include/**/*.h'
   s.vendored_libraries = 'DLSFTPClient/Libraries/lib/libssh2.a', 'DLSFTPClient/Libraries/lib/libssl.a', 'DLSFTPClient/Libraries/lib/libcrypto.a'
-
+  s.libraries = 'z'
   s.framework	 = 'Foundation', 'CFNetwork'
 end
