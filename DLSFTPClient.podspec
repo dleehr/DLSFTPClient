@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = "DLSFTPClient"
-  s.version      = "1.0.0"
-  s.summary      = "DLSFTPClient is an SFTP Client library  for iOS, using libssh2"
+  s.version      = "1.0.1"
+  s.summary      = "DLSFTPClient is an SFTP Client library for iOS, using libssh2"
   s.homepage     = "https://github.com/dleehr/DLSFTPClient"
   s.social_media_url = 'https://twitter.com/leehro'
   s.license      = { :type => 'BSD', :file => 'LICENSE' }
@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
     :tag => s.version.to_s
   }
 
-  s.platform     = :ios, '5.1.1'
+  s.platform     = :ios, '6.0'
   s.requires_arc = true
 
   s.source_files = 'DLSFTPClient/Classes/*.{h,m}', 'DLSFTPClient/Libraries/include/**/*.h'
