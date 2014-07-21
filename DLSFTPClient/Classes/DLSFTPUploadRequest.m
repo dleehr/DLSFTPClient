@@ -135,7 +135,7 @@ static const size_t cBufferSize = 8192;
         return;
     }
     __weak DLSFTPUploadRequest *weakSelf = self;
-    dispatch_queue_t socketQueue = dispatch_get_current_queue();
+    dispatch_queue_t socketQueue = self.connection.socketQueue;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         void(^cleanup_handler)(int) = ^(int error) {
             if (error) {
@@ -147,7 +147,7 @@ static const size_t cBufferSize = 8192;
                                                              , [weakSelf.localPath UTF8String]
                                                              , O_RDONLY
                                                              , 0
-                                                             , dispatch_get_current_queue()
+                                                             , socketQueue
                                                              , cleanup_handler
                                                              );
         dispatch_source_t progressSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_DATA_ADD, 0, 0, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));

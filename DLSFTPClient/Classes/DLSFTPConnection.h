@@ -39,6 +39,8 @@ int waitsocket(int socket_fd, LIBSSH2_SESSION *session);
 
 @interface DLSFTPConnection : NSObject <DLSFTPRequestDelegate>
 
+@property (nonatomic, strong, readonly) dispatch_queue_t socketQueue;
+
 #pragma mark Connection
 
 - (id)initWithHostname:(NSString *)hostname
