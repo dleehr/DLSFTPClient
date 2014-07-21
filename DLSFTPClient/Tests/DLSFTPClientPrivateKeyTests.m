@@ -67,7 +67,7 @@
     STAssertTrue([self.connection isConnected], @"Not connected");
     __block NSError *localError = nil;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-    static NSString *directoryPath = @"/Users/testuser/sftp-test";
+    NSString *directoryPath = self.connectionInfo[@"basePath"];
     DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:directoryPath
                                                                       successBlock:^(NSArray *array) {
                                                                           dispatch_semaphore_signal(semaphore);
