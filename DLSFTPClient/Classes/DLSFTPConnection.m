@@ -56,9 +56,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 @interface DLSFTPConnection () {
 
-    // socket queue
-    dispatch_queue_t _socketQueue;
-
     // request queue
     dispatch_queue_t _requestQueue;
 
@@ -72,6 +69,9 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     dispatch_source_t _writeSource;
 }
 
+// socket queue, needed by requests
+@property (nonatomic, strong, readwrite) dispatch_queue_t socketQueue;
+
 @property (nonatomic, copy) DLSFTPClientSuccessBlock connectionSuccessBlock;
 @property (nonatomic, copy) DLSFTPClientFailureBlock connectionFailureBlock;
 
@@ -82,7 +82,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 @property (nonatomic, assign) NSUInteger port;
 
 @property (nonatomic, assign) int socket;
-@property (nonatomic, assign) dispatch_source_t timeoutTimer;
+@property (nonatomic, strong) dispatch_source_t timeoutTimer;
 @property (nonatomic, assign) LIBSSH2_SESSION *session;
 @property (nonatomic, assign) LIBSSH2_SFTP *sftp;
 
@@ -166,7 +166,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         self.keypath = keypath;
         self.socket = -1;
         self.requests = [[NSMutableArray alloc] init];
-        _socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
+        self.socketQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.socket", DISPATCH_QUEUE_SERIAL);
         _requestQueue = dispatch_queue_create("com.hammockdistrict.SFTPClient.request", DISPATCH_QUEUE_CONCURRENT);
         _connectionGroup = dispatch_group_create();
         _idleTimer = NULL; // lazily loaded
@@ -190,9 +190,6 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     #endif
 }
 
-- (dispatch_queue_t)socketQueue {
-    return _socketQueue;
-}
 - (dispatch_queue_t)requestQueue {
     return _requestQueue;
 }
@@ -308,7 +305,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (void)startSFTPSession {
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_async(_connectionGroup,_socketQueue, ^{
+    dispatch_group_async(_connectionGroup, self.socketQueue, ^{
         int socketFD = self.socket;
         LIBSSH2_SESSION *session = self.session;
 
@@ -455,7 +452,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 
 - (void)startRequest {
     DLSFTPRequest *request = self.currentRequest;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
+    dispatch_group_notify(_connectionGroup, self.socketQueue, ^{
         [request start];
     });
 }
@@ -468,7 +465,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         return;
     }
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_group_notify(_connectionGroup, _socketQueue, ^{
+    dispatch_group_notify(_connectionGroup, self.socketQueue, ^{
         if (failed) {
             [request fail];
         } else {
@@ -604,7 +601,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         }
 
         // initialize and connect the socket on the socket queue
-        dispatch_group_async(_connectionGroup, _socketQueue, ^{
+        dispatch_group_async(_connectionGroup, self.socketQueue, ^{
             // Resolve the hostname
 
             CFHostRef hostRef = CFHostCreateWithName(NULL, (__bridge CFStringRef)(weakSelf.hostname));
@@ -662,7 +659,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         soin = (struct sockaddr*)(&soin6);
     } else {
         // Unknown address length
-        dispatch_group_async(_connectionGroup, _socketQueue, ^{
+        dispatch_group_async(_connectionGroup, self.socketQueue, ^{
             [weakSelf connectToAddressAtIndex:index + 1
                                       inArray:addresses];
         });
@@ -699,7 +696,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     }
 
     // set up a dispatch source to monitor the socket fd
-    _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, dispatch_get_current_queue());
+    _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, sock, 0, self.socketQueue);
     dispatch_group_t connectionGroup = _connectionGroup;
     dispatch_block_t connected_handler = ^{
         if (weakSelf.timeoutTimer) {
@@ -716,17 +713,24 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         if (error) {
             // try the next address
             close(sock);
-            dispatch_group_async(connectionGroup, dispatch_get_current_queue(), ^{
-                [weakSelf connectToAddressAtIndex:index + 1
-                                          inArray:addresses];
-            });
+            DLSFTPConnection *strongSelf = weakSelf;
+            if (strongSelf) {
+                // Cannot dispatch to NULL queue
+                dispatch_group_async(connectionGroup, strongSelf.socketQueue, ^{
+                    [strongSelf connectToAddressAtIndex:index + 1
+                                                inArray:addresses];
+                });
+            }
         } else {
             weakSelf.socket = sock;
             dispatch_source_t writeSource = [weakSelf writeSource];
             if (writeSource && dispatch_source_testcancel(writeSource) == 0) {
                 dispatch_source_cancel(writeSource);
             }
-            dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
+            DLSFTPConnection *strongSelf = weakSelf;
+            if (strongSelf) {
+                dispatch_group_async(connectionGroup, strongSelf.socketQueue, connected_handler);
+            }
         }
     };
 
@@ -758,14 +762,14 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     result = connect(sock, soin, soin_size);
     if (result == 0) {
         // connected immediately
-        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), connected_handler);
+        dispatch_group_async(connectionGroup, self.socketQueue, connected_handler);
     } else if (errno == EINPROGRESS || errno == EALREADY) {
         // connecting, wait for the handler to be called and leave the dispatch group
         return;
     } else {
         // error, close this socket and try the next address
         close(sock);
-        dispatch_group_async(connectionGroup, dispatch_get_current_queue(), ^{
+        dispatch_group_async(connectionGroup, self.socketQueue, ^{
             [weakSelf connectToAddressAtIndex:index + 1
                                       inArray:addresses];
         });
@@ -775,16 +779,16 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
 - (void)timeoutTimerHandler {
     // timeout fired, close the socket
     __weak DLSFTPConnection *weakSelf = self;
-    dispatch_sync([weakSelf socketQueue], ^{
+    dispatch_sync(self.socketQueue, ^{
         [weakSelf _disconnect]; // closes on socketQueue
     });
     // and fail
-    [weakSelf failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
-                         errorDescription:@"Connection timed out"];
+    [self failConnectionWithErrorCode:eSFTPClientErrorConnectionTimedOut
+                     errorDescription:@"Connection timed out"];
     // clear out the queued success block
-    weakSelf.connectionSuccessBlock = nil;
-    if (weakSelf.timeoutTimer) {
-        dispatch_source_cancel(weakSelf.timeoutTimer);
+    self.connectionSuccessBlock = nil;
+    if (self.timeoutTimer) {
+        dispatch_source_cancel(self.timeoutTimer);
     }
 }
 
@@ -794,7 +798,7 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
     if (self.timeoutTimer) {
         dispatch_source_cancel(self.timeoutTimer);
     }
-    dispatch_sync(_socketQueue, ^{
+    dispatch_sync(self.socketQueue, ^{
         [self _disconnect];
     });
     if (self.connectionFailureBlock) { // not yet connected
@@ -853,7 +857,9 @@ LIBSSH2_USERAUTH_KBDINT_RESPONSE_FUNC(response) {
 // callback function for disconnect
 LIBSSH2_DISCONNECT_FUNC(disconnected) {
     DLSFTPConnection *connection = (__bridge DLSFTPConnection *)(*abstract);
-    dispatch_async([connection socketQueue], ^{
-        [connection disconnectedWithReason:reason message:[NSString stringWithUTF8String:message]];
-    });
+    if (connection) {
+        dispatch_async(connection.socketQueue, ^{
+            [connection disconnectedWithReason:reason message:[NSString stringWithUTF8String:message]];
+        });
+    }
 }

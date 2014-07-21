@@ -266,7 +266,7 @@ static const size_t cBufferSize = 8192;
 
     self.startTime = [NSDate date];
     // start the first download block
-    dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadChunk]; });
+    dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadChunk]; });
 }
 
 - (void)downloadChunk {
@@ -296,11 +296,11 @@ static const size_t cBufferSize = 8192;
         dispatch_release(data);
 #endif
         // read the next chunk
-        dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadChunk]; });
+        dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadChunk]; });
     } else if(bytesRead == 0 || self.isCancelled) { // not a host error if cancelled
-        dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadFinished]; });
+        dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadFinished]; });
     } else { //bytesRead < 0
-        dispatch_async(dispatch_get_current_queue(), ^{ [weakSelf downloadFailed]; });
+        dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadFailed]; });
     }
 }
 

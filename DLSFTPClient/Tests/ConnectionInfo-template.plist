@@ -8,6 +8,8 @@
 	<string>host</string>
 	<key>password</key>
 	<string>secret</string>
+	<key>passphrase</key>
+	<string>privateKeyPassphrase</string>
 	<key>port</key>
 	<integer>22</integer>
 	<key>basePath</key>
