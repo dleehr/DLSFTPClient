@@ -271,7 +271,7 @@ static const size_t cBufferSize = 8192;
 
 - (void)downloadChunk {
     size_t bytesRead = 0;
-    char buffer[cBufferSize];
+    char *buffer = malloc(sizeof(char) * cBufferSize);
     while (   self.isCancelled == NO
            && (bytesRead = libssh2_sftp_read(self.handle, buffer, cBufferSize)) == LIBSSH2SFTP_EAGAIN) {
         waitsocket([self.connection socket], [self.connection session]);
@@ -279,22 +279,24 @@ static const size_t cBufferSize = 8192;
     // after data has been read, write it to the channel
     __weak DLSFTPDownloadRequest *weakSelf = self;
     if (bytesRead > 0) {
-        dispatch_source_merge_data(self.progressSource, bytesRead);
-        dispatch_data_t data = dispatch_data_create(buffer, bytesRead, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-        dispatch_io_write(  self.channel
-                          , 0
-                          , data
-                          , dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-                          , ^(bool done, dispatch_data_t data, int error) {
-                              // done refers to the chunk of data written
-                              // Tried moving progress reporting here, didn't make much difference
-                              if (error) {
-                                  printf("error in dispatch_io_write %d\n", error);
-                              }
-                          });
+        @autoreleasepool {
+            dispatch_source_merge_data(self.progressSource, bytesRead);
+            dispatch_data_t data = dispatch_data_create(buffer, bytesRead, NULL, DISPATCH_DATA_DESTRUCTOR_FREE);
+            dispatch_io_write(  self.channel
+                              , 0
+                              , data
+                              , dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+                              , ^(bool done, dispatch_data_t data, int error) {
+                                  // done refers to the chunk of data written
+                                  // Tried moving progress reporting here, didn't make much difference
+                                  if (error) {
+                                      printf("error in dispatch_io_write %d\n", error);
+                                  }
+                              });
 #if NEEDS_DISPATCH_RETAIN_RELEASE
-        dispatch_release(data);
+            dispatch_release(data);
 #endif
+        }
         // read the next chunk
         dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadChunk]; });
     } else if(bytesRead == 0 || self.isCancelled) { // not a host error if cancelled
