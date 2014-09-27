@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "DLSFTPClient"
-  s.version      = "1.0.2"
+  s.version      = "1.0.3"
   s.summary      = "DLSFTPClient is an SFTP Client library for iOS, using libssh2"
   s.homepage     = "https://github.com/dleehr/DLSFTPClient"
   s.social_media_url = 'https://twitter.com/leehro'
