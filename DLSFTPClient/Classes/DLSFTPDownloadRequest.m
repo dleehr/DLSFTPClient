@@ -300,8 +300,10 @@ static const size_t cBufferSize = 8192;
         // read the next chunk
         dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadChunk]; });
     } else if(bytesRead == 0 || self.isCancelled) { // not a host error if cancelled
+        free(buffer);
         dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadFinished]; });
     } else { //bytesRead < 0
+        free(buffer);
         dispatch_async(self.connection.socketQueue, ^{ [weakSelf downloadFailed]; });
     }
 }
