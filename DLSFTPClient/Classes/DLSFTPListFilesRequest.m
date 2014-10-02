@@ -104,6 +104,7 @@ static const size_t cBufferSize = 8192;
     long result = 0;
 
     do {
+        memset(buffer, 0, sizeof(buffer));
         while (   ((result = libssh2_sftp_readdir(handle, buffer, cBufferSize, &attributes)) == LIBSSH2SFTP_EAGAIN)
                && self.isCancelled == NO){
             waitsocket(socketFD, session);
@@ -113,7 +114,9 @@ static const size_t cBufferSize = 8192;
             return;
         }
         if (result > 0) {
-            NSString *filename = [NSString stringWithUTF8String:buffer];
+            NSString *filename = [[NSString alloc] initWithBytes:buffer
+                                                          length:result
+                                                        encoding:NSUTF8StringEncoding];
             // skip . and ..
             if ([filename isEqualToString:@"."] || [filename isEqualToString:@".."]) {
                 continue;
