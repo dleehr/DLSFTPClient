@@ -31,6 +31,8 @@
 
 #import "NSDictionary+SFTPFileAttributes.h"
 
+NSString const * DLFileAccessDate = @"DLFileAccessDate";
+
 @implementation NSDictionary (SFTPFileAttributes)
 
 + (NSDictionary *)dictionaryWithAttributes:(LIBSSH2_SFTP_ATTRIBUTES)attributes {
@@ -64,16 +66,14 @@
         [dictionary setObject:@(attributes.gid) forKey:NSFileGroupOwnerAccountID];
     }
 
-    if (attributes.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) {
-    }
-
     if (attributes.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) {
-        [dictionary setObject:@(attributes.mtime) forKey:NSFileModificationDate];
-
+        NSDate *modificationDate = [NSDate dateWithTimeIntervalSince1970:attributes.mtime];
+        [dictionary setObject:modificationDate forKey:NSFileModificationDate];
+        NSDate *accessDate = [NSDate dateWithTimeIntervalSince1970:attributes.atime];
+        [dictionary setObject:accessDate forKey:DLFileAccessDate];
     }
+
     return dictionary;
-
 }
-
 
 @end

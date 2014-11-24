@@ -32,6 +32,8 @@
 #include "libssh2_sftp.h"
 #import <Foundation/Foundation.h>
 
+extern NSString const * DLFileAccessDate;
+
 @interface NSDictionary (SFTPFileAttributes)
 
 + (NSDictionary *)dictionaryWithAttributes:(LIBSSH2_SFTP_ATTRIBUTES)attributes;
