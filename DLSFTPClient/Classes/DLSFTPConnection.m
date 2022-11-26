@@ -320,12 +320,14 @@ static NSString * const SFTPClientCompleteRequestException = @"SFTPClientComplet
         }
         // valid session, get the socket descriptor
         // must be called from socket's queue
-        long result;
-        while (   (result = libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
+        while (   (libssh2_session_handshake(session, socketFD) == LIBSSH2_ERROR_EAGAIN)
                && weakSelf.isConnected) {
             waitsocket(socketFD, session);
         }
-        if (result) {
+
+        long result = libssh2_session_last_errno(session);
+
+        if (result != 0) {
             // handshake failed
             // free the session and close the socket
             [weakSelf _disconnect];
