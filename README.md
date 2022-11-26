@@ -4,7 +4,7 @@ SFTP Client library and sample app for iOS, using libssh2
 
 ## Overview
 
-DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access to upload and download files, as well as perform directory operations.  It requires iOS 5.1.  
+DLSFTPClient is a an Objective-C wrapper around libssh2, providing simple access to upload and download files, as well as perform directory operations.  It requires iOS 5.1.
 
 ## Status
 
@@ -19,7 +19,7 @@ You'll need to initialize a `DLSFTPConnection` object with the host and credenti
                                                                          port:22
                                                                      username:@"username"
                                                                      password:@"password"];
-                                                                     
+
 To establish a connection, use `connectWithSuccessBlock:failureBlock:`
 
     DLSFTPClientSuccessBlock successBlock = ^{ ... };
@@ -31,7 +31,7 @@ To disconnect, use `disconnect`
 
     [connection disconnect];
 
-Your success and failure blocks are dispatched to the global concurrent queue.  Be sure to dispatch back to the main queue if you need to drive UI updates.                                                                     
+Your success and failure blocks are dispatched to the global concurrent queue.  Be sure to dispatch back to the main queue if you need to drive UI updates.
 
 Operations such as listing directory contents, downloading files, and moving/renaming are carried out through subclasses of `DLSFTPRequest`:
 
@@ -44,7 +44,7 @@ Operations such as listing directory contents, downloading files, and moving/ren
     DLSFTPClientFailureBlock failureBlock = ^(NSError *error) {
         NSLog(@"Error listing files: %@", error);
     };
-    
+
     DLSFTPRequest *request = [[DLSFTPListFilesRequest alloc] initWithDirectoryPath:@"/Users/dan/"
                                                                       successBlock:successBlock
                                                                       failureBlock:failureBlock];
@@ -73,7 +73,7 @@ The Demo App is incomplete and needs some polish.
 
 ## Project Dependencies
 
-1. [libssh2](https://github.com/x2on/libssh2-for-iOS) - Provides a shell script to build libssh2.a Static Library and headers
+1. [libssh2](https://github.com/Frugghi/iSSH2) - Provides a shell script to build libssh2.a Static Library and headers
 
 ## License
 
